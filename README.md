@@ -1,1 +1,2 @@
-# global_hg-ag_wgs_code
+# Global Patterns of Recent Human Adaptation to the Foraging-Farming Transition
+Contains all code necessary to reproduce results from Chak et al. (link) step-by-step in markdown format. Processed VCFs and raw sequencing data are subject to data access agreements and deposited on EGA (link), while downstream summary files and resources that may be useful or processed in above code segments are publicly available on Zenodo (link). Correspondance to Evan Wu (evanwu@uchicago.edu) and Luis Barreiro (lbarreiro@uchicago.edu) if needed.  

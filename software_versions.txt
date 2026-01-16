@@ -1,0 +1,20 @@
+# Nextflow pipelines:
+nextflow	22.10.7.5853
+nf-core/sarek	3.3.2
+
+## Custom pipeline for joint-calling GVCFs:
+gvcf	1.0
+  gatk
+  bcftools 
+
+# Tools and software:
+angsd 
+bcftools	1.18.0
+gatk	4.6.1
+plink	1.19.0
+
+# R analysis and packages:
+R	4.3.1
+
+# Python code and packages:
+python 3.0.0
