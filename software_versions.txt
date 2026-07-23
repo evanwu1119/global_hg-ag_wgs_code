@@ -1,11 +1,52 @@
 # Nextflow pipelines:
-nextflow	22.10.7.5853
-nf-core/sarek	3.3.2
-
-## Custom pipeline for joint-calling GVCFs:
-gvcf	1.0
-  gatk
-  bcftools 
+BCFTOOLS_STATS:
+bcftools: 1.16-90-g2191405
+BWAMEM1_MEM:
+bwa: 0.7.17-r1188
+samtools: '1.16'
+CRAM_TO_BAM:
+samtools: '1.16'
+CRAM_TO_BAM_RECAL:
+samtools: '1.16'
+CREATE_INTERVALS_BED:
+gawk: 4.0.2
+CUSTOM_DUMPSOFTWAREVERSIONS:
+python: 3.9.7
+yaml: '6.0'
+FASTP:
+fastp: 0.23.2
+FASTQC:
+fastqc: 0.11.9
+GATK4_APPLYBQSR:
+gatk4: 4.2.6.1
+GATK4_BASERECALIBRATOR:
+gatk4: 4.2.6.1
+GATK4_GATHERBQSRREPORTS:
+gatk4: 4.2.6.1
+GATK4_HAPLOTYPECALLER:
+gatk4: 4.2.6.1
+GATK4_MARKDUPLICATES:
+gatk4: 4.2.6.1
+samtools: '1.16'
+INDEX_CRAM:
+samtools: '1.16'
+INDEX_MARKDUPLICATES:
+samtools: '1.16'
+MERGE_CRAM:
+samtools: '1.16'
+MERGE_HAPLOTYPECALLER:
+gatk4: 4.2.6.1
+MOSDEPTH:
+mosdepth: 0.3.3
+SAMTOOLS_STATS:
+samtools: '1.16'
+TABIX_BGZIPTABIX_INTERVAL_SPLIT:
+tabix: '1.14'
+TABIX_DBSNP:
+tabix: '1.14'
+Workflow:
+Nextflow: 22.10.7
+nf-core/sarek: 3.1.2
 
 # Tools and software:
 angsd 
