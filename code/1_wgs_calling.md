@@ -1,77 +1,46 @@
-# Mapping and genotype calling procedures
+# 1. Whole-genome mapping and calling procedures
 
-# **Preprocessing (FastQ → GVCF)**
+This page details the procedures taken to generate the VCFs used for further downstream analysis. 
 
-Used Sarek germline variant calling pipeline: [https://nf-co.re/sarek](https://nf-co.re/sarek), [https://github.com/nf-core/sarek/tree/3.3.2](https://github.com/nf-core/sarek/tree/3.3.2)
+## Preprocessing and calling
 
-Aligned to GRCh37 reference and subsetted for WGS callable regions from GATK: `/project/lbarreiro/SHARED/REFERENCES/Homo_sapiens/GATK/GRCh37/Annotation/intervals/wgs_calling_regions_Sarek.list`
-
-![Untitled](Untitled.png)
-
-Tool parameters are the defaults provided by Sarek
-
-`BCFTOOLS_STATS:
-bcftools: 1.16-90-g2191405
-BWAMEM1_MEM:
-bwa: 0.7.17-r1188
-samtools: '1.16'
-CRAM_TO_BAM:
-samtools: '1.16'
-CRAM_TO_BAM_RECAL:
-samtools: '1.16'
-CREATE_INTERVALS_BED:
-gawk: 4.0.2
-CUSTOM_DUMPSOFTWAREVERSIONS:
-python: 3.9.7
-yaml: '6.0'
-FASTP:
-fastp: 0.23.2
-FASTQC:
-fastqc: 0.11.9
-GATK4_APPLYBQSR:
-gatk4: 4.2.6.1
-GATK4_BASERECALIBRATOR:
-gatk4: 4.2.6.1
-GATK4_GATHERBQSRREPORTS:
-gatk4: 4.2.6.1
-GATK4_HAPLOTYPECALLER:
-gatk4: 4.2.6.1
-GATK4_MARKDUPLICATES:
-gatk4: 4.2.6.1
-samtools: '1.16'
-INDEX_CRAM:
-samtools: '1.16'
-INDEX_MARKDUPLICATES:
-samtools: '1.16'
-MERGE_CRAM:
-samtools: '1.16'
-MERGE_HAPLOTYPECALLER:
-gatk4: 4.2.6.1
-MOSDEPTH:
-mosdepth: 0.3.3
-SAMTOOLS_STATS:
-samtools: '1.16'
-TABIX_BGZIPTABIX_INTERVAL_SPLIT:
-tabix: '1.14'
-TABIX_DBSNP:
-tabix: '1.14'
-Workflow:
-Nextflow: 22.10.7
-nf-core/sarek: 3.1.2`
-
-# Joint Calling (GVCF → VCF)
-
-GATK 4.2.3.0: SelectVariants → GenomicsDBImport → GenotypeGVCFs → VariantRecalibrator (SNP and Indel) → ApplyVQSR (99.9 tranche) → SelectVariants PASS 
-
-# VCF processing
-
-Working directory for scripts/files: `/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/raw_vcfs` 
-
-Final directory: `/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/vcf` 
+Preprocessing was performed using the [Sarek germline variant calling pipeline](https://nf-co.re/sarek/3.3.2) with default parameters, which follows the GATK joint germline short variant discovery workflow. Raw FastQs were aligned to the [GRCh37 reference genome](), duplicates were marked, and single sample calling was performed to produce a GVCF for each sample. After all samples reached this stage, joint calling was applied across the entire cohort to generate a single raw callset, with VQSR applied at the 99.9 level for SNPs. Please refer to the nf-core documentation for how to run this pipeline. 
 
 Raw VCF file: `germline_PASS_indel_SNP_recalibrated_99.9.selectvariants.vcf.gz`
 
-**Step 1) Normalize VCF and split into biallelic version vs. indel version, exclude samples with <10X average genome-wide coverage (based on `samples.txt`, refer to `../freeze2_coverage_corrected.txt`).**
+## Generating coverage statistics
+
+`mosdepth_average_coverage` -> `freeze2_coverage.txt`
+
+```bash
+cd /project/lbarreiro/USERS/evanwu/
+out="/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/coverage/freeze2_coverage.txt"
+readarray -d '' regions < <(find ./ -name *.mosdepth.region.dist.txt -print0 | sort)
+readarray -d '' summaries < <(find ./ -name *.mosdepth.summary.txt -print0 | sort)
+n=${#regions[@]}
+
+# Get data: sample, average depth genome-wide, proportion of bases covered at 0X, 1X, 10X, 20X, 30X
+printf "sample\tavg_depth\t0X\t1X\t10X\t20X\t30X\n" > $out
+
+for (( i = 0; i < $n-1; i++ )); do
+        sample=$(basename ${regions[i]})
+        sample=${sample%%\.*}
+
+        avg=$(tail -n 1 ${summaries[i]} | awk '{print $4}')
+
+        X30=$(grep 'total' ${regions[i]} | grep '\b30\s' | awk '{print$3}')
+        X20=$(grep 'total' ${regions[i]} | grep '\b20\s' | awk '{print$3}')
+        X10=$(grep 'total' ${regions[i]} | grep '\b10\s' | awk '{print$3}')
+        X1=$(grep 'total' ${regions[i]} | grep '\b1\s' | awk '{print$3}')
+        X0=$(grep 'total' ${regions[i]} | grep '\b0\s' | awk '{print$3}')
+
+        printf "$sample\t$avg\t$X0\t$X1\t$X10\t$X20\t$X30\n" >> $out
+done
+```
+
+## VCF QC and filtering
+
+**Step 1) Normalize VCF, select biallelic SNPs, exclude samples with <10X average genome-wide coverage.**
 
 `bcftools_normalize.sh`  → `freeze2_normalized{_biallelic,_indel}.vcf.gz`
 
@@ -99,9 +68,9 @@ bcftools index -t --threads 10 freeze2_normalized_indel.vcf.gz
 - Within Info field, filter out Quality by Depth (QD) < 2.0
 - Within Info field, filter out Fisher’s exact test for Strand bias (FS) > 60
 - Within Format field, GQ < 30 is set as missing
-- Within Format field, a depth (DP) < 10 or (ii) DP > 3X the average sample coverage is set as missing (refer to `depth_summary.txt`)
+- Within Format field, a depth (DP) < 10 or (ii) DP > 3X the average sample coverage is set as missing
 
-`cyvcf_submit.sh`  and `cyvcf_hardfilter.py`  → `baseline_filters/per_chr/freeze2_biallelic_filtered.{chr}.vcf.gz`
+`cyvcf_hardfilter.py ${chr}` → `baseline_filters/per_chr/freeze2_biallelic_filtered.${chr}.vcf.gz`
 
 ```python
 import sys
@@ -144,9 +113,9 @@ for v in vcf(sys.argv[1]):
 vcf.close(); writer.close()
 ```
 
-**Step 3) Calculate the average missingness within each of the 8 calling cohorts and remove sites where the median cohort missingness is  >10% (more robust to cohort batch effects)**
+**Step 3) Calculate the average missingness within each of the 8 calling cohorts and remove sites where the median cohort missingness is >10%.**
 
-`cyvcf_submit.sh`  and `cyvcf_cohort_missingness.py`  → `baseline_filters_site_0.1_cohort_missing/per_chr/freeze2_biallelic_filtered_site_0.1_cohort_missing.{chr}.vcf.gz`  and `per_cohort_missingness/per_cohort_missingness.{chr}.txt.gz`
+`cyvcf_cohort_missingness.py ${chr}` → `freeze2_biallelic_filtered_site_0.1_cohort_missing.${chr}.vcf.gz`  and `per_cohort_missingness.${chr}.txt.gz`
 
 ```python
 import sys
@@ -161,7 +130,7 @@ vcf = VCF(vcf_file, strict_gt=True, threads=10)
 writer = Writer('baseline_filters_site_0.1_cohort_missing/freeze2_biallelic_filtered_site_0.1_cohort_missing.' + sys.argv[1] + '.vcf.gz', vcf)
 
 # Read in population metadata
-metadata = pd.read_csv('/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v1.txt', sep='\t')
+metadata = pd.read_csv('/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt', sep='\t')
 metadata = metadata[['study_ID','cohort']]
 cohorts_meta = metadata.groupby('cohort')['study_ID'].apply(list)
 
@@ -210,7 +179,7 @@ bcftools concat freeze2_tmp1.vcf.gz freeze2_tmp2.vcf.gz -O u --threads 10 | \
 bcftools index -t freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing.vcf.gz --threads 10
 ```
 
-**Step 5) Remove multiallelic sites (>1 variant observed at a site) and monomorphic sites (introduced when we recoded genotypes as missing based on filters, or later steps when removing samples)**  
+**Step 5) Remove multiallelic sites (>1 variant observed at a site) and monomorphic sites (introduced when we recoded genotypes as missing based on filters, or later steps when removing samples). This constitutes the Level 1 VCF in the manuscript.**  
 
 `bcftools_multiallelic.sh` → `freeze2_biallelic_polymorphic.vcf.gz`
 
@@ -238,7 +207,7 @@ bcftools index -t --threads 10 freeze2_multiallelic_monomorphic_sites.vcf.gz
 bcftools query freeze2_multiallelic_monomorphic_sites.vcf.gz -f '%CHROM\t%POS\n' -o multiallelic_monomorphic_sites.txt
 ```
 
-**Step 6) Remove individuals that are heterozygosity and relatedness outliers and check to remove monomorphic variants that may have arisen due to variant individuals being removed**
+**Step 6) Remove individuals that are heterozygosity and relatedness outliers and check to remove monomorphic variants that may have arisen due to variant individuals being removed. This constitutes the Levels 2 and 3 VCFs in the manuscript.**
 
 `bcftools_nohet_nokin.sh` → `freeze2_biallelic_polymorphic_nohet.vcf.gz` and `freeze2_biallelic_polymorphic_nohet_nokin.vcf.gz`
 
@@ -257,9 +226,9 @@ bcftools view freeze2_biallelic_polymorphic_nohet.vcf.gz -S "^${KIN}" --threads 
 bcftools index -t --threads 10 freeze2_biallelic_polymorphic_nohet_nokin.vcf.gz
 ```
 
-**Step 7) Calculate the regional and population alternate AF statistics for each site**
+**Step 7) Calculate the regional and population MAF statistics for each site.**
 
-`cyvcf_submit.sh`  and `cyvcf_regional_maf.py`  → `per_region_maf/per_region_maf.{chr}.txt.gz` 
+`cyvcf_regional_maf.py ${chr}`  → `per_region_maf.${chr}.txt.gz` 
 
 ```python
 import sys
@@ -271,10 +240,9 @@ import pandas as pd
 # Initialize vcf parsers
 vcf_file = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/raw_vcfs/baseline_filters_site_0.1_cohort_missing/freeze2_biallelic_filtered_site_0.1_cohort_missing.' + sys.argv[1] + '.vcf.gz'
 vcf = VCF(vcf_file, strict_gt=True, gts012=True, threads=10)
-#writer = Writer('chroms/freeze1_filtered_0.1_cohort_missing.' + sys.argv[1] + '.vcf.gz', vcf)
 
 # Read in population metadata
-metadata = pd.read_csv('/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v1.txt', sep='\t')
+metadata = pd.read_csv('/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt', sep='\t')
 metadata = metadata[['study_ID','region']]
 metadata['region'] = [i[-1] for i in metadata['region'].str.split()]
 regions_meta = metadata.groupby('region')['study_ID'].apply(list)
@@ -287,7 +255,6 @@ prm = open('per_region_maf/per_region_maf.' + sys.argv[1] + '.txt', "a")
 prm_writer = csv.writer(prm, delimiter='\t')
 prm_writer.writerow(['CHROM','POS','REF','ALT', 'MAF'] + regions_meta.index.tolist())
 
-#filter_level = 0.1
 num_regions = len(regions_meta)
 
 # Read in each VCF site
@@ -295,24 +262,18 @@ for record in vcf:
     output_record = True
     per_region_maf = np.zeros(num_regions)
 
-    # For each region calculate the MAF across samples
+    # For each region calculate the MAF across samples and write out the stats
     for r, region in enumerate(regions_meta.index):
         gts = record.gt_types[np.array(regions_meta[region]).astype(int)]
         per_region_maf[r] = np.mean(gts[gts != 3]) / 2
 
-    # Filter site if median/mean > 0.1
-    #med = np.median(per_cohort_miss)
-    #if med > filter_level: output_record = False
-    # if np.mean(per_cohort_miss) > filter_level: output_record = False
     prm_writer.writerow([record.CHROM, record.POS, record.REF, record.ALT[0], record.aaf] + list(per_region_maf))
 
-    #if output_record: writer.write_record(record)
-
-vcf.close(); prm.close()#; writer.close()
+vcf.close(); prm.close()
 
 ```
 
-`cyvcf_submit.sh`  and `cyvcf_population_maf.py`  → `per_population_maf/per_population_maf.{chr}.txt.gz`
+`cyvcf_population_maf.py ${chr}`  → `per_population_maf.${chr}.txt.gz`
 
 ```python
 import sys
@@ -365,15 +326,7 @@ for record in vcf:
 vcf.close(); ppm.close()#; writer.close()
 ```
 
-Note: Be careful with these outputs because they are not quite MAF stats— they are the frequencies of the ALT allele, which is not always the minor allele.
-
-**Step 8) Overall stats on autosomal VCF** 
-
-working directory: `../vcf_stats`
-
-`gatk_VCF_metrics.sh` → `filtered_site_0.1_cohort_missing_VCF_metrics.variant_calling_{detail,summary}_metrics` 
-
-This uses dbsnp build 129 to conservatively identify overlapping variants and more accurate Ti/Tv ratio, we also ran with a newer build 156 to see overlap with known variants:
+**Step 8) Overall stats on autosomal VCF using dbSNP build 156.** 
 
 `gatk_VCF_metrics.sh` → `dbsnp156_filtered_site_0.1_cohort_missing_VCF_metrics.variant_calling_{detail,summary}_metrics`
 
