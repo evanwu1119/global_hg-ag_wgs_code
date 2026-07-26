@@ -326,7 +326,7 @@ for record in vcf:
 vcf.close(); ppm.close()#; writer.close()
 ```
 
-**Step 8) Overall stats on autosomal VCF using dbSNP build 156.** 
+**Step 8) Generate overall stats on a VCF and compare with dbSNP build 156.** 
 
 `gatk_VCF_metrics.sh` → `dbsnp156_filtered_site_0.1_cohort_missing_VCF_metrics.variant_calling_{detail,summary}_metrics`
 
