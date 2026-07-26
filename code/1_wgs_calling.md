@@ -4,7 +4,7 @@ This page details the procedures taken to generate the VCFs used for further dow
 
 ## Preprocessing and calling
 
-Preprocessing was performed using the [Sarek germline variant calling pipeline](https://nf-co.re/sarek/3.3.2) with default parameters, which follows the GATK joint germline short variant discovery workflow. Raw FastQs were aligned to the [GRCh37 reference genome](), duplicates were marked, and single sample calling was performed to produce a GVCF for each sample. After all samples reached this stage, joint calling was applied across the entire cohort to generate a single raw callset, with VQSR applied at the 99.9 level for SNPs. Please refer to the nf-core documentation for how to run this pipeline. 
+Preprocessing was performed using the [Sarek germline variant calling pipeline](https://nf-co.re/sarek/3.3.2) with default parameters, which follows the GATK joint germline short variant discovery workflow. Raw FastQs were aligned to the GRCh37 reference genome (`--genome GATK.GRCh37` in sarek), duplicates were marked, and single sample calling was performed to produce a GVCF for each sample. After all samples reached this stage, joint calling was applied across the entire cohort to generate a single raw callset, with VQSR applied at the 99.9 tranche for SNPs and 99.0 tranche for indels. Please refer to the nf-core documentation for how to run this pipeline. 
 
 Raw VCF file: `germline_PASS_indel_SNP_recalibrated_99.9.selectvariants.vcf.gz`
 
