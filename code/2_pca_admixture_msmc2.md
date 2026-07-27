@@ -1,4 +1,4 @@
-# Ancestry and demographic analysis 
+# 2) Ancestry and demographic analysis 
 
 This page details the code needed to generate PCA, ADMIXTURE, and MSMC2 results from the Level 3 VCF, corresponding to Figure 1, Supplemental Figures 2, . 
 
@@ -37,7 +37,7 @@ plink --bfile freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet
 
 ## ADMIXTURE
 
-**Step 1. Starting from PLINK outputs generated above for PCA, LD pruning SNPs and make BED file for all samples. Additionally, subset samples by continent.**
+**Step 1) Starting from PLINK outputs generated above for PCA, LD pruning SNPs and make BED file for all samples. Additionally, subset samples by continent.**
 
 `plink_make_bed.sh` -> `freeze2_baseline_filters_site_0.1_cohort_missing_nohet_nokin_0.01_maf_pruned_${CONT}`
 
@@ -60,7 +60,7 @@ for CONT in africa asia oceania; do
 done 
 ```
 
-**Step 2. Run ADMIXTURE for K = 1-13 with 10 replicates. Specify the sample subset with the `CONT` variable.**
+**Step 2) Run ADMIXTURE for K = 1-13 with 10 replicates. Specify the sample subset with the `CONT` variable.**
 
 `admixture.sh ${K} ${r} ${CONT}` -> `log.freeze2_baseline_filters_site_0.1_cohort_missing_nohet_nokin_0.01_maf_pruned_${CONT}.K${K}.r${r}.out`
 
@@ -80,7 +80,7 @@ mkdir -p "${CONT}/R${r}"
 mv ${PRE}.${K}.Q ${PRE}.K${K}r${r}.Q
 ```
 
-**Step 3. Extract cross-validation error rates from ADMIXTURE output files and prepare ind2pop (i.e. population label) for pong.**
+**Step 3) Extract cross-validation error rates from ADMIXTURE output files and prepare ind2pop (i.e. population label) for pong.**
 
 `create_ind2pop.sh` -> `CV_error_${CONT}.txt` and ` ${CONT}.ind2pop`
 
@@ -93,7 +93,7 @@ for CONT in global, africa, asia, oceania; do
 done 
 ```
 
-**Step 4. Assemble the Qfilemap file that points pong towards which “.Q” files to display.**
+**Step 4) Assemble the Qfilemap file that points pong towards which “.Q” files to display.**
 
 `create_Qmap.sh` -> `${CONT}.multiplerun.Qfilemap`
 
@@ -118,7 +118,7 @@ export -f createQmap
 for K in {2..13}; do for r in {1..10}; for CONT in global, africa, asia, oceania; do createQmap ${r} ${K} ${CONT}; done; done; done
 ```
 
-**Step 6. Install pong through Conda and run via command line to get a visualization in-browser. Additional options `-n` and `-l` specify order of populations and colors for Supplementary Figure 3.**
+**Step 5) Install pong through Conda and run via command line to get a visualization in-browser. Additional options `-n` and `-l` specify order of populations and colors for Supplementary Figure 3.**
 
 ```bash
 #!/bin/bash
@@ -126,7 +126,7 @@ for K in {2..13}; do for r in {1..10}; for CONT in global, africa, asia, oceania
 pong -m ${CONT}.multiplerun.Qfilemap -i ${CONT}.ind2pop -n ${CONT}.poporder.txt -l ${CONT}.colors.txt -v -o pong_${CONT}
 ```
 
-**Step 7. Plot ADMIXTURE outputs for each continent manually to create Figure 1d.**
+**Step 6) Plot ADMIXTURE outputs for each continent manually to create Figure 1d.**
 
 `freeze2_admixture.R`
 
