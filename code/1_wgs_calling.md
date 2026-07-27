@@ -10,7 +10,7 @@ Raw VCF file: `germline_PASS_indel_SNP_recalibrated_99.9.selectvariants.vcf.gz`
 
 ## Generating coverage statistics
 
-`mosdepth_average_coverage` -> `freeze2_coverage.txt`
+`mosdepth_average_coverage` → `freeze2_coverage.txt`
 
 ```bash
 cd /project/lbarreiro/USERS/evanwu/
@@ -42,7 +42,7 @@ done
 
 **Step 1) Normalize VCF, select biallelic SNPs, exclude samples with <10X average genome-wide coverage.**
 
-`bcftools_normalize.sh`  → `freeze2_normalized{_biallelic,_indel}.vcf.gz`
+`bcftools_normalize.sh` → `freeze2_normalized{_biallelic,_indel}.vcf.gz`
 
 ```bash
 sample_rename="freeze2_vcfID_to_studyID_key.txt"
