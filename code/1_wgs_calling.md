@@ -494,7 +494,7 @@ bcftools view freeze2_biallelic_polymorphic_nohet.vcf.gz -S "^${KIN}" --threads 
 bcftools index -t --threads 10 freeze2_biallelic_polymorphic_nohet_nokin.vcf.gz
 ```
 
-## Phasing 
+## Phasing and ancestral allele recoding
 
 **Step 1) Phase using SHAPEIT5 in reference-free mode. Genetic maps are downloaded from [1kG](https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.html).**
 
