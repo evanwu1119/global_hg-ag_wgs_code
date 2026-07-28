@@ -1,25 +1,16 @@
-# Bayenv2.0
+# Bayenv analysis
 
-**References:**
+These steps contain the code to run Bayenv genome-wide across all 34 populations with 5 replicate runs per SNP. For the purposes of the environmental correlation, agriculturalist and pastoralist populations were coded as 0, while hunter-gatherers were coded as 1. We also reran this pipeline removing pastoralists and removing samples with uncertain allele frequencies (< 15 individuals), this only differs by the removal of 2 or 8 populations i.e. changing the input files/environmental variables, so we don't duplicate the code for those runs here (label = sample filtering: all pops = `bayenv`, no pastoralists = `no_pst`, confident AFs = `nsamples15` + snps filtering: `_maf5_2pops`). Based on QC from our first test runs we found that Bayenv significant SNPs tend to be common especially compared to the global SNP AF distribution. In light of this, we decided to filter for SNPs with a MAF > 0.05 and that were present in at least 2 populations, leaving us with 7.1M SNPs to test. This analysis comprises the results presented in Figure 5, Supplementary Figure 8, and Supplementary Tables 6 and 7.
 
-[https://bitbucket.org/tguenther/bayenv2_public/src/master/](https://bitbucket.org/tguenther/bayenv2_public/src/master/)
-[https://doi.org/10.1073/pnas.0914625107](https://doi.org/10.1073/pnas.0914625107)
-[https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3761302/](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3761302/)
+## Prepare Bayenv input data
 
-**Summary of Method:**
+**Step 1) Get allele count information per-population starting from the Level 2 VCF.** 
 
-> “For each SNP and each environmental variable, we contrasted allele frequencies between the two sets of populations using a Bayesian linear model method that controls for the covariance of allele frequencies between populations due to population history and accounts for differences in sample sizes among populations. **The statistic resulting from this method is a Bayes factor (BF), which is a measure of the support for a model in which a SNP allele frequency distribution is dependent on an environmental variable in addition to population structure, relative to a model in which the allele frequency distribution is dependent on population structure alone.** For subsequent analyses, we use a transformed rank statistic based on the location of each SNP in the overall distribution of BFs. Because we rank each SNP relative to SNPs within the same allele frequency range and from the same ascertainment panel, this transformed rank statistic allows us to make comparisons across SNP sets. To conduct analyses for the two types of variables (ecoregion and subsistence) as a whole, we also calculated for each SNP a minimum rank statistic across all of the variables within each category, which results in a summary statistic for ecoregion and subsistence, respectively.”
-> 
-
-## Info from Bridget
-
----
-
-**Step 1. Get allele count information per-population** 
-
-- Get allele-frequency / counts information per-population from the PLINK dataset in `/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/plink/baseline_filters_site_0.1_cohort_missing_nohet_nokin`
+`plink_allelecounts.sh` → `baseline_filters_site_0.1_cohort_missing_nohet_nokin_perpop_keepREFALT.strat`
 
 ```bash
+#!/bin/bash
+
 # reformat PLINK files' A1 A2 alleles according to the REF + ALT allele
 "By default, the minor allele is coded A1 and the major allele is coded A2 (this is used in many output files, e.g. from --freq or --assoc). "
 
@@ -32,125 +23,23 @@ awk 'BEGIN{OFS="\t"} {$2="chr"$1"pos"$4; print}' baseline_filters_site_0.1_cohor
 plink --bfile baseline_filters_site_0.1_cohort_missing_nohet_nokin_keepREFALT --freq --family --keep-allele-order --out baseline_filters_site_0.1_cohort_missing_nohet_nokin_perpop_keepREFALT
 ```
 
-**Note:** the reason why I am choosing to be consistent with the REF/ALT assignments and in getting the counts for the ALT alleles specifically is because I also intend to do a LOF variant count analysis, and the LOF variants is always the ALT allele rather than the REF.
+**Step 2) Parse the ALT allele count data.**
 
-The output looks something like this where A1 allele (T) is the ALT allele, and A2 allele (C) is the REF allele. 
-
-![Screenshot 2024-06-17 at 17.46.41.png](Screenshot_2024-06-17_at_17.46.41.png)
-
-**Step 2. Parse the ALT allele count data that’s stratified by population**
-
-Working directory:
-
-`/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/plink/baseline_filters_site_0.1_cohort_missing_nohet_nokin_keepREFALT`
-
-- This is the file `baseline_filters_site_0.1_cohort_missing_nohet_nokin_perpop_keepREFALT.frq.strat`
-
-Looks like this
-
-```bash
- CHR               SNP     CLST   A1   A2      MAF    MAC  NCHROBS
-   1      chr1pos16280      ADV    C    T        0      0       24 
-   1      chr1pos16280      AET    C    T        0      0       56 
-   1      chr1pos16280      AGT    C    T        0      0       34 
-   1      chr1pos16280      ATI    C    T        0      0       36 
-   1      chr1pos16280      ATY    C    T        0      0       18 
-   1      chr1pos16280      BAK    C    T  0.09091      4       44 
-   1      chr1pos16280      BCH    C    T        0      0       70 
-   1      chr1pos16280      CBU    C    T        0      0       44 
-   1      chr1pos16280      FAN    C    T     0.08      4       50
-```
-
-Use `clean_and_split_frq_stats.sh`
+`clean_and_split_frq_stats.sh` → `modified_file.txt`
 
 ```bash
 #!/bin/bash
-#SBATCH --partition=caslake
-#SBATCH --account=pi-\lbarreiro
-#SBATCH --time=36:00:00
-#SBATCH --mem=20G
-#SBATCH --nodes=1
 
 input_file="baseline_filters_site_0.1_cohort_missing_nohet_nokin_perpop_keepREFALT.frq.strat"
 
 # Step 1: Modify the 2nd column (SNP -> POS) and strip the characters before "pos"
 awk 'BEGIN {OFS="\t"} NR==1 {print $1, "POS", $3, $4, $5, $6, $7, $8} NR>1 {gsub(/^.*pos/, "", $2); print}' "$input_file" > modified_file.txt
-
-# Step 2: Separate the file based on unique values in the 3rd column (CLST)
-awk 'NR>1 {print > $3"_alt_allele_freq.txt"}' modified_file.txt
 ```
 
-Now you have a modified_file with cleaned up coordinates, and a population-specific alt_allele_freq file.
 
-```bash
-# Strip the modified_file down to just the following columns so it takes less time to read into R (note that this doesn't have the number of chromosomes so you can't extrapolate from the MAF to get LoF counts)
+**Step 3) Convert filtered file of allele counts into Bayenv’s SNPSFILE format (tab-separated allele counts for reference and alternate allele, one line each).**
 
-CHR	POS	CLST	MAF
-1	16280	ADV	0
-1	16280	AET	0
-1	16280	AGT	0
-1	16280	ATI	0
-1	16280	ATY	0
-1	16280	BAK	0.09091
-1	16280	BCH	0
-1	16280	CBU	0
-1	16280	FAN	0.08
-
-cut -f1,2,3,6 modified_file.txt > allpops_alt_allele_freq.txt
-```
-
-## Summary of files
-
----
-
-- `modified_file.txt` is the comprehensive file for the allele frequencies of each position within each population
-- `allpops_alt_allele_freq.txt` is the stripped version that just has chr, pos, pop, and maf info; if you don’t need the allele info and # of chromosomes, this is much quicker to load
-- `<XXX>_alt_allele_freq.txt` contains the information from `modified_file.txt` but it’s split into per-population
-
-## Running Bayenv
-
----
-
-Working directory: `/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv` 
-
-Bayenv2.0 manual:
-
-[bayenv2_manual.pdf](bayenv2_manual.pdf)
-
-These steps contain the code to run the Bayenv software genome-wide across all 34 populations with 5 replicate runs per SNP. For the purposes of the environmental correlation agriculturalist and pastoralist populations were coded as 0 while hunter-gatherers were coded as 1. Based on QC from our first test runs we found that Bayenv significant SNPs tend to be common especially compared to the global SNP AF distribution. In light of this, we decided to filter for SNPs with a MAF > 0.05 and that were present in at least 2 populations, leaving us with 7.1M SNPs to test.  
-
-**Step 1) Filter `modified_file.txt` to remove monomorphic and multiallelic sites**
-
-`python_filter_mac.py`  → `modified_file_filtered.txt`
-
-```python
-#!/project/lbarreiro/USERS/evanwu/software/conda_envs/vcf/bin/python
-import sys
-import os
-
-IN = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/plink/baseline_filters_site_0.1_cohort_missing_nohet_nokin_keepREFALT/modified_file.txt'
-REF = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/isec/sites.txt'
-OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/modified_file_filtered.txt'
-
-with open(IN, 'r') as in_file, open(REF, 'r') as exclude_sites, open(OUT, 'a') as out_file:
-    ex_next = exclude_sites.readline().split()
-
-    for line in in_file:
-        tmp = line.split()
-
-        if tmp[0] == ex_next[0] and tmp[1] == ex_next[1]:
-            if tmp[2] == "VAN":
-                ex_next = exclude_sites.readline().split()
-                if len(ex_next) == 0:
-                    ex_next = ['0', '0']
-            continue
-
-        out_file.write(line)
-```
-
-**Step 2) Convert filtered file of allele counts into Bayenv’s SNPSFILE format (tab-separated allele counts for reference and alternate allele, one line each)**
-
-`python_mac2bayenv.sh`  → `bayenv_snpsfile.txt`  and `bayenv_loci.txt` 
+`python_mac2bayenv.sh`  → `bayenv_snpsfile.txt` and `bayenv_snps.txt` 
 
 ```python
 #!/project/lbarreiro/USERS/evanwu/software/conda_envs/vcf/bin/python
@@ -159,12 +48,16 @@ import os
 from itertools import islice
 import pandas as pd
 
-IN = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/modified_file_filtered.txt'
-OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_snpsfile.txt'
-LOCI = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_loci.txt'
+NAME = 'bayenv'
+DIR = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/data/'
+IN = DIR + 'modified_file.txt'
+OUT = DIR + NAME '_snpsfile.txt'
+LOCI = DIR + NAME + '_snps.txt'
+
+ln = 0 # track SNP number
 
 with open(IN, 'r') as in_file, open(LOCI, 'a') as sites, open(OUT, 'a') as out_file:
-    # read in loci information for 34 pops
+    # Read in loci information for 34 pops
     mac = in_file.readline() # skip header col
 
     while True:
@@ -172,8 +65,11 @@ with open(IN, 'r') as in_file, open(LOCI, 'a') as sites, open(OUT, 'a') as out_f
         if mac.empty:
             break
 
-        sites.write(mac[0][0] + '_' + mac[0][1] + '\n')
+				# Increment SNP number and write out SNP chrpos
+				ln+=1
+        sites.write(ln + '\t' + mac[0][0] + '_' + mac[0][1] + '\n')
 
+				# Write out the SNPSFILE format 
         aac = mac.str.get(6)
         nac = mac.str.get(7)
         rac = nac.astype(int) - aac.astype(int)
@@ -181,106 +77,22 @@ with open(IN, 'r') as in_file, open(LOCI, 'a') as sites, open(OUT, 'a') as out_f
         out_file.write(aac.str.cat(sep = '\t') + '\n')
 ```
 
-**Step 3) Sample ~100K random SNPs from the SNPSFILE to estimate the covariance matrix**
+**Step 4) Calculate the AF stats for all SNPs.**
 
-`sample_random_snps.sh`  → `bayenv_random_snps.txt`
+`python_calc_aaf.py` → `bayenv_snp_aaf.txt`
 
-```bash
-#!/bin/bash
-
-awk '
-  BEGIN {srand(); n = 0}
-  NR%2 {if (rand() < 0.002) {print $0; n++; next;}}
-  n==1 {print $0; n--}
-  ' bayenv_snpsfile.txt > bayenv_random_snps.txt
-```
-
-**Step 4) Estimate the covariance matrix with 100K SNPs and 100K iterations and confirm similarity to pairwise FST estimates** 
-
-`bayenv_matrix.sh`  → `bayenv_matrixfile.txt` 
-
-```bash
-#!/bin/bash
-#SBATCH --partition=caslake
-#SBATCH --account=pi-lbarreiro
-#SBATCH --time=24:00:00
-#SBATCH --mem=5G
-#SBATCH --cpus-per-task=8
-#SBATCH --job-name=bayenv_matrix
-#SBATCH --chdir=/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv
-
-BAYENV=/project/lbarreiro/USERS/evanwu/software/bayenv2_public/bayenv2
-
-# Estimate covariance matrix using ~100k random snps
-$BAYENV -i bayenv_random_snps.txt -p 34 -k 100000 -r 2024 > matrix.out
-```
-
-`bayenv_analysis.Rmd {check covariance matrix}`
-
-[bayenv_corr_mat.pdf](bayenv_corr_mat.pdf)
-
-```r
-library(ComplexHeatmap)
-
-# Correlation matrix should be similar to pairwise FST estimates
-covmat <- fread("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_matrixfile.txt", select = 1:34) %>% as.matrix()
-covmat <- fread("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/OLD_bayenv_matrixfile.txt", select = 1:34) %>% as.matrix()
-popinfo <- fread("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_popinfo.txt")
-popinfo$region <- factor(popinfo$region, levels = c("West Central Africa", "East Central Africa", "East Africa", "Southern Africa", "South Asia", "East Asia", "Southeast Asia", "Oceania"))
-popinfo$subsistence <- factor(popinfo$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
-
-colnames(covmat) <- popinfo$pop_code
-rownames(covmat) <- popinfo$pop_code
-cormat <- 1 - cov2cor(covmat)
-clust <- hclust(dist(cormat))
-
-subsistence <- data.frame(subsistence = popinfo$subsistence, row.names=popinfo$pop_code)
-subsistence$subsistence <- factor(subsistence$subsistence)
-region <- data.frame(region = popinfo$region, row.names=popinfo$pop_code)
-region$region <- factor(popinfo$region, levels = c("East Africa", "East Central Africa", "West Central Africa", "Southern Africa", "East Asia", "Southeast Asia", "South Asia", "Oceania"))
-
-ann_col <- list(subsistence = c("Agriculturalist" = "lightgreen",
-                                "Hunter-gatherer" = "lightcoral",
-                                "Pastoralist" = "lightblue"),
-                region = c("East Africa" = "firebrick4",
-                           "East Central Africa" = "red3",
-                           "West Central Africa" = "darkorange",
-                           "Southern Africa" = "gold",
-                           "East Asia" = "orchid",
-                           "South Asia" = "purple2",
-                           "Southeast Asia" = "dodgerblue3",
-                           "Oceania" = "turquoise2"))
-
-pdf(paste0(wd, "figures/bayenv_corr_mat.pdf"), height = 10, width = 12)
-pheatmap(cormat, cluster_rows=clust, cluster_cols=clust,
-         cellwidth=15, cellheight=15,
-         annotation_row = subsistence, annotation_names_row = F,
-         annotation_col = region, annotation_names_col = F,
-         annotation_colors = ann_col,
-         heatmap_legend_param=list(title="1 - AF correlation"),
-         display_numbers=T, number_format="%.2f", fontsize_number=6)
-dev.off()
-```
-
-**Step 5) Calculate the AF stats for all SNPs (`bayenv_snp_aaf.txt`). Then filter loci that are singletons, doubletons, population-specific, or global MAF < 0.05 based on the AAF file and select sites (`bayenv_maf5_2pops_snp_aaf.txt`  sites to keep: 57,349,118 → 7,124,658 SNPs)**
-
-`python_filter_snps.py` → `bayenv_maf5_2pops_snpsfile.txt`
-
-```bash
+```python
 #!/project/lbarreiro/USERS/evanwu/software/conda_envs/vcf/bin/python
 import sys
 import os
 import numpy as np
 
-# Filter the snpsfile
-IN = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_snpsfile.txt'
-REF = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_maf5_2pops_snp_aaf.txt'
-OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_maf5_2pops_snpsfile.txt'
-
 # Calculate stats for all loci
-#IN = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_snpsfile.txt'
-#REF = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_snps.txt'
-#AAF = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_snp_aaf.txt'
+NAME = 'bayenv'
+DIR = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/data/'
+IN = DIR + NAME + '_snpsfile.txt'
+REF = DIR + NAME + '_snps.txt'
+AAF = DIR + NAME + '_snp_aaf.txt'
 
 # Given line number n to select from BF info file, get lines 2n-2 and 2n-1 from snps file as python uses n-1 for nth line
 # Calculate AAF for each pop, HG/AG, and overall,
@@ -288,36 +100,33 @@ OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayen
 hg_idx = np.array([1,2,3,4,6,8,14,17,25,33]) - 1
 ag_idx = np.array([5,7,9,10,12,13,15,16,19,20,21,22,23,24,25,27,28,29,30,31,32,34]) - 1
 
-# open(OUT, 'a') as out_file
-with open(IN, 'r') as in_file, open(REF, 'r') as sites, open(OUT, 'a') as out_file: #, open(AAF, 'a') as aaf_file:
+with open(IN, 'r') as in_file, open(REF, 'r') as sites, open(AAF, 'a') as aaf_file:
     next_site = sites.readline().split()[0]
     next_site = int(next_site)
 
     for l,line in enumerate(in_file):
         # Just print the SNP counts
         if l == (next_site * 2 - 2):
-            out_file.write(line)
 
-            #ref_counts = np.array(list(map(int, line.split())))
+            ref_counts = np.array(list(map(int, line.split())))
 
         elif l == (next_site * 2 - 1):
-            out_file.write(line)
 
             # Calculate AAF
-            #alt_counts = np.array(list(map(int, line.split())))
-            #pop_counts = ref_counts + alt_counts
-            #
-            #aaf = np.divide(alt_counts, pop_counts, out = np.zeros(alt_counts.shape, dtype = float), where = pop_counts!=0)
-            #hg_aaf = alt_counts[hg_idx].sum() / pop_counts[hg_idx].sum()
-            #ag_aaf = alt_counts[ag_idx].sum() / pop_counts[ag_idx].sum()
-            #maf = min(sum(alt_counts) / sum(pop_counts), sum(ref_counts) / sum(pop_counts))
-            #
-            ## Append total AC and number of pops present
-            #mpop = min(sum(ref_counts != 0), sum(alt_counts != 0))
-            #mac = min(sum(ref_counts), sum(alt_counts))
+            alt_counts = np.array(list(map(int, line.split())))
+            pop_counts = ref_counts + alt_counts
 
-            #snp_aaf = np.insert(aaf, 0, [mac, maf, mpop, hg_aaf, ag_aaf])
-            #np.savetxt(aaf_file, snp_aaf[np.newaxis], fmt = '%.4f', delimiter = '\t')
+            aaf = np.divide(alt_counts, pop_counts, out = np.zeros(alt_counts.shape, dtype = float), where = pop_counts!=0)
+            hg_aaf = alt_counts[hg_idx].sum() / pop_counts[hg_idx].sum()
+            ag_aaf = alt_counts[ag_idx].sum() / pop_counts[ag_idx].sum()
+            maf = min(sum(alt_counts) / sum(pop_counts), sum(ref_counts) / sum(pop_counts))
+
+            # Append total AC and number of pops present
+            mpop = min(sum(ref_counts != 0), sum(alt_counts != 0))
+            mac = min(sum(ref_counts), sum(alt_counts))
+
+            snp_aaf = np.insert(aaf, 0, [mac, maf, mpop, hg_aaf, ag_aaf])
+            np.savetxt(aaf_file, snp_aaf[np.newaxis], fmt = '%.4f', delimiter = '\t')
 
             next_site = sites.readline()
 
@@ -328,47 +137,150 @@ with open(IN, 'r') as in_file, open(REF, 'r') as sites, open(OUT, 'a') as out_fi
             next_site = int(next_site)
 ```
 
-**Step 6) Calculate Bayes Factors with 100K MCMC iterations to obtain demographic-neutral correlations with subsistence, repeat 5 times per SNP and output calculated correlations; 10,000 SNPs per split (`bayenv_environfile.txt` , 0 = AG and 1 = HG)**
+**Step 5) Filter SNPs that are in less than 2 populations or global MAF < 0.05 in `bayenv_snps_aaf.txt` by command line, then use these sites to filter the `snpsfile`.**
 
-[`submit.sh`](http://submit.sh) submission script
+`python_filter_snps.py` → `bayenv_maf5_2pops_snpsfile.txt`
+
+```python
+#!/project/lbarreiro/USERS/evanwu/software/conda_envs/vcf/bin/python
+import sys
+import os
+import numpy as np
+
+# Filter the snpsfile
+NAME = 'bayenv'
+DIR = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/data/'
+IN = DIR + NAME + '_snpsfile.txt'
+
+# Command to get MAF > 0.05, at least 2 pops: awk '($4 > 0.05 && $5 >= 2){print $0}' bayenv_snp_aaf.txt > bayenv_maf5_2pops_snp_aaf.txt
+REF = DIR + NAME + '_maf5_2pops_snp_aaf.txt'
+OUT = DIR + NAME + '_maf5_2pops_snpsfile.txt'
+
+# Given line number n to select from BF info file, get lines 2n-2 and 2n-1 from snps file as python uses n-1 for nth line
+# Calculate AAF for each pop, HG/AG, and overall,
+# Column order is MAC, MAF, # pops showing MA, HG, AG, pop-specific AAFs
+
+hg_idx = np.array([1,2,3,4,6,8,14,17,25,33]) - 1
+ag_idx = np.array([5,7,9,10,11,12,13,15,16,18,19,20,21,22,23,24,26,27,28,29,30,31,32,34]) - 1
+
+with open(IN, 'r') as in_file, open(REF, 'r') as sites, open(OUT, 'a') as out_file:
+    next_site = sites.readline().split()[0]
+    next_site = int(next_site)
+
+    for l,line in enumerate(in_file):
+        # Just print the SNP counts
+        if l == (next_site * 2 - 2):
+            out_file.write(line)
+
+        elif l == (next_site * 2 - 1):
+            out_file.write(line)
+
+            next_site = sites.readline()
+
+            if len(next_site) == 0:
+                break
+
+            next_site = next_site.split()[0]
+            next_site = int(next_site)
+```
+
+**Step 6) Sample ~100K random SNPs from the SNPSFILE to estimate the covariance matrix. Do this three separate times to confirm that the covariance matrix has converged.**
+
+`sample_random_snps.sh` → `bayenv_maf5_2popsp_random_snps_{1, 2, 3}.txt`
 
 ```bash
 #!/bin/bash
 
-# split -a 3 -l 14000 bayenv_noSDS_snpsfile.txt splits/split.
-# split -a 3 -l 14000 r1_outlier_snpsfile.txt splits/split.
-# split -a 3 -l 20000 bayenv_maf5_2pops_snpsfile.txt splits/split.
-readarray -d '' splits < <(find splits -name split.* -print0)
-#readarray -t splits < splits.txt
+name="bayenv_maf5_2pops"
+mkdir -p matrix
 
-for s in "${splits[@]}"; do
-        suf="${s##*.}"
-        sbatch --export=suffix=$suf bayenv_calc_bf.sh
+# Sample 100K random SNPs three times
+for i in {1..3}; do
+	awk '
+  	BEGIN {srand(); n = 0}
+  	NR%2 {if (rand() < 0.002) {print $0; n++; next;}}
+  	n==1 {print $0; n--}
+	' data/${name}_snpsfile.txt > matrix/${name}_random_snps${i}.txt
 done
 ```
 
-`bayenv_calc_bf.sh`  → `bfs/r{1..5}/${suffix}.bf` 
+**Step 7) Estimate the covariance matrix with 100K SNPs and 100K iterations.** 
+
+`bayenv_matrix.sh` → `bayenv_maf5_2pops_matrixfile.txt` 
 
 ```bash
 #!/bin/bash
-#SBATCH --partition=caslake
-#SBATCH --account=pi-lbarreiro
-#SBATCH --time=36:00:00
-#SBATCH --mem=2G
-#SBATCH --cpus-per-task=8
-#SBATCH --job-name=bayenv_calc_bf
-#SBATCH --chdir=/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bfs/r5
 
-SNPFILE="../splits/split.${suffix}"
-#SNPFILE="../outlier_snpsfile.txt"
-ENVFILE="../bayenv_environfile.txt"
-MATFILE="../bayenv_matrixfile.txt"
+BAYENV=/project/lbarreiro/USERS/evanwu/software/bayenv2_public/bayenv2
+POP=34
+name="bayenv_maf5_2pops"
+
+# Estimate covariance matrix using ~100k random snps
+$BAYENV -i ${name}_random_snps${rep}.txt -p ${POP} -k 100000 -r ${RANDOM} > ${name}_matrix${rep}.out
+
+# Get last converged matrix
+tail -n $[ ${POP} + 1 ] ${name}_matrix${rep}.out > ${name}_matrix${rep}.txt
+```
+
+**Step 8) Confirm the covariance matrices converged and reflect expected population structure.**
+
+`bayenv_analysis.Rmd {check covariance matrix}`
+
+```R
+library(data.table)
+library(ggplot2)
+library(scales)
+library(tidyverse)
+library(ComplexHeatmap)
+
+popinfo <- fread("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_popinfo.txt")
+popinfo$region <- factor(popinfo$region, levels = c("West Central Africa", "East Central Africa", "East Africa", "Southern Africa", "South Asia", "East Asia", "Southeast Asia", "Oceania"))
+popinfo$subsistence <- factor(popinfo$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
+# popinfo <- filter(popinfo, samples %in% run_samples) # Define run samples for nopst, nsamples15 to subset popinfo
+
+# Correlation matrix should be similar to pairwise FST estimates
+name = "bayenv_maf5_2pops" #  nopst_maf5_2pops, nsamples15_maf5_2pops
+npops = 34
+
+maf51 <- fread(paste0("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/matrix/" name, "_matrix1.txt"), select = 1:npops) %>% as.matrix()
+rownames(maf51) <- popinfo$pop_code
+colnames(maf51) <- popinfo$pop_code
+
+maf52 <- fread(paste0("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/matrix/" name, "_matrix2.txt"), select = 1:26) %>% as.matrix()
+rownames(maf52) <- popinfo$pop_code
+colnames(maf52) <- popinfo$pop_code
+
+maf53 <- fread(paste0("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/matrix/" name, "_matrix3.txt"), select = 1:26) %>% as.matrix()
+rownames(maf53) <- popinfo$pop_code
+colnames(maf53) <- popinfo$pop_code
+
+color_fun <- circlize::colorRamp2(breaks = c(0.13, 0.28), colors = c("white","red"))
+Heatmap(maf51, col = color_fun, name = "Covariance")
+Heatmap(maf52, col = color_fun, name = "Covariance")
+Heatmap(maf53, col = color_fun, name = "Covariance")
+```
+
+**Step 9) Calculate Bayes Factors with 100K MCMC iterations to obtain demographic-neutral correlations with subsistence. Repeat 5 times per SNP and output calculated correlations and logBFs. Run in batches of 10,000 SNPs per split (`bayenv_environfile.txt` prepared manually, 0 = AG/PST and 1 = HG). `${suffix}` refers to the file extension generated by `split`.**
+
+`bayenv_calc_bf.sh ${suffix} ${r}`  → `bfs/r${r}/${suffix}.bf` 
+
+```bash
+#!/bin/bash
+
+# Generate batches of 10K SNPs from the filtered SNPSFILE by command line
+# split -a 3 -l 20000 bayenv_maf5_2pops_snpsfile.txt splits/split.
+
+SNPFILE="../../splits/split.${suffix}"
+ENVFILE="../../data/bayenv_environfile.txt"
+MATFILE="../../matrix/bayenv_maf5_2pops_matrix1.txt"
 POPNUM=34
 ITNUM=100000
 ENVNUM=1
 
-BAYENV=/project/lbarreiro/USERS/evanwu/software/bayenv2_public/bayenv2
 c=0
+
+mkdir -p r${r}
+cd r${r}
 
 # Read in each line of the file, for every loci (=2 lines) calculate bayes factor and replace the temporary file
 while IFS='' read -r line; do
@@ -380,50 +292,44 @@ while IFS='' read -r line; do
                 printf '%s\t' $line >> "tmp.${suffix}"
                 printf '\n' >> "tmp.${suffix}"
                 ((c--))
-                $BAYENV -i "tmp.${suffix}" -e $ENVFILE -m $MATFILE -k $ITNUM -r $RANDOM -p $POPNUM -n $ENVNUM -t -c -o ${suffix}
+                bayenv2 -i "tmp.${suffix}" -e ${ENVFILE} -m ${MATFILE} -k ${ITNUM} -r ${RANDOM} -p ${POPNUM} -n ${ENVNUM} -t -c -o ${suffix}
         fi
-done < $SNPFILE
+done < ${SNPFILE}
 ```
 
-**Step 7) Script to finish up runs where a particular split was terminated prematurely due to walltime (`bads_r{1..5}.txt` list of unfinished loci)**
+**Step 10) Finish up runs where a particular split was terminated prematurely due to walltime. `bads_r{1..5}.txt` are lists of unfinished loci for each replicate run).**
 
-`get_bads.sh → bads_r{1..5}.txt`
-
-```bash
-for i in {1..5}; do
-        echo "Bads $i"
-        wc -l r${i}/*.bf | head -n -1 | grep -v -E "10000|4658" > bads_r${i}.txt
-done
-```
-
-`finish_bfs.sh`  → `bfs/tmp{1..5}/${suffix}.bf`
+`finish_bfs.sh ${r}`  → `tmp${r}/${suffix}.bf`
 
 ```bash
 #!/bin/bash
-#SBATCH --partition=caslake
-#SBATCH --account=pi-lbarreiro
-#SBATCH --time=6:00:00
-#SBATCH --mem=1G
-#SBATCH --cpus-per-task=10
-#SBATCH --job-name=finish_bfs
-#SBATCH --chdir=/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/tmp5
 
-BAD="../bads_r5.txt"
+# Generate list of unfinished splits for each replicate run
+# for i in {1..5}; do
+#         echo "Bads $i"
+#         wc -l r${i}/*.bf | head -n -1 | grep -v -E "10000|4658" > bads_r${i}.txt
+# done
 
-ENVFILE="../bayenv_environfile.txt"
-MATFILE="../bayenv_matrixfile.txt"
+BAD="../bads_r${r}.txt"
+
+ENVFILE="../../data/bayenv_environfile.txt"
+MATFILE="../../matrix/bayenv_matrixfile.txt"
 POPNUM=34
 ITNUM=100000
 ENVNUM=1
 
-BAYENV=/project/lbarreiro/USERS/evanwu/software/bayenv2_public/bayenv2
+LAST="bbk"
+LASTN=4658
+
+mkdir -p tmp${r}
+cd tmp${r}
 
 # Read in each line of the file, for every loci (=2 lines) calculate bayes factor and replace the temporary file
 while IFS=' ' read -r n file; do
         suffix=${file##*/}
         suffix=${suffix%%.*} # split identifier
-        if [ $suffix = "bbk" ]; then
-                finish="$(( (4658 - $n) * 2 ))" # number of loci for last split
+        if [ $suffix = ${LAST} ]; then
+                finish="$(( (${LASTN} - $n) * 2 ))" # number of loci for last split
         else
                 finish="$(( (10000 - $n) * 2 ))" # number of loci to finish
         fi
@@ -450,10 +356,9 @@ while IFS=' ' read -r n file; do
         # Append to finished BFs
         #cat ${suffix}.bf >> ../bfs/${suffix}.bf
 done < $BAD
-
 ```
 
-**Step 8) Move complete splits into same folders, concatenate, then paste the replicate runs to get our final data with 5 replicates of BFs and Spearman correlations per SNP**
+**Step 11) Move complete splits into same folders, concatenate, then paste the replicate runs to get our final data with 5 replicates of BFs and Spearman correlations per SNP**
 
 `cat_bfs.sh` → `bayenv_maf5_2pops_{bfs, spearman_p, pearson_r}.txt`
 
@@ -472,169 +377,6 @@ rm tmp.txt
 
 # Downstream analysis
 
----
-
-From the first run, we found that replicates could vary widely with respect to the magnitude of p-values. With this completed run, we also had the computed environmental correlations across replicates. With BFs and effect sizes/correlations across 5 replicates for the 7M set of tested SNPs, we did some exploratory analysis to decide reasonable cutoffs for significance:
-
-- We tried aggregating BFs across replicates using:
-    - Average of log10 BFs
-    - Median of log10 BFs
-    - At least 4 replicates where BF > cutoff
-    - At least 5 replicates where BF > cutoff
-- We tried filtering based on absolute value of Spearman correlations at levels of [0, 0.05, 0.1, 0.2]
-
-Takeaways from exploratory analysis:
-
-- logBFs vary more than correlations, with correlations across runs at ~0.55 for BFs and ~0.75 for
-- For logBFs the median is more stringent suggesting that large outliers may be unbalancing the average, with no correlation cutoff we get 75K significant SNPs from average and 50K from median
-- Strangely there is very little correlation ~0.07 between logBFs and correlations, though you would expect that larger effect sizes have higher p-value
-- For the enrichments, keeping a correlation threshold of at least 0.05 preserves interesting signals and likely reduces outlier effects (see above), with increasing strictness our enrichments become a bit too sparse
-
-Ultimately we decided to use the following: 
-
-- Median log10 BF across replicates > 1.5, this significance cutoff was used by these studies:
-    - https://www.nature.com/articles/s41467-021-27510-2#Sec7
-    - https://onlinelibrary.wiley.com/doi/epdf/10.1111/mec.13722
-    - Ultimately they cite a textbook with guidelines for interpretation of Bayes factors: [https://doi.org/10.1093/oso/9780198503682.001.0001](https://doi.org/10.1093/oso/9780198503682.001.0001)
-- Median Spearman rho > 0.05
-- 32,089 SNPs / 7.2M significant after these thresholds
-
-**Step 0) Exploratory analysis of Bayenv stats across the replicate runs**
-
-`bayenv_analysis.Rmd {explore bf stats}`
-
-```r
-#library(biomaRt)
-library(clusterProfiler)
-library(data.table)
-library(GenomicRanges)
-library(ggplot2)
-#library(ggpattern)
-library(parallel)
-library(plyranges)
-library(rtracklayer)
-library(tidyverse)
-
-wd <- "/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/"
-
-rep_bfs <- fread(paste0(wd, "bayenv_maf5_2pops_bfs.txt"), header = F)
-rep_bfs <- log10(rep_bfs)
-rep_bfs[2757637] <- 295.1854 # infinite, set to max of that replicate col
-
-rep_rho <- fread(paste0(wd, "bayenv_maf5_2pops_spearman_p.txt"), header = F)
-#rep_cor <- fread(paste0(wd, "bayenv_maf5_2pops_pearson_r.txt"), header = F) # Pearson correlation not recommended to use
-cutoff <- 1.5
-
-# BF summary statistics
-# bf_cors <- cor(rep_bfs)
-# print(bf_cors)
-#           V1        V2        V3        V4        V5
-# V1 1.0000000 0.5342143 0.5708442 0.5535897 0.5708177
-# V2 0.5342143 1.0000000 0.5409288 0.5521865 0.5499941
-# V3 0.5708442 0.5409288 1.0000000 0.5656822 0.5718234
-# V4 0.5535897 0.5521865 0.5656822 1.0000000 0.5786261
-# V5 0.5708177 0.5499941 0.5718234 0.5786261 1.0000000
-
-bf_stats <- data.frame(
-  avg = rowMeans(rep_bfs),
-  med = apply(rep_bfs, 1, median),
-  rep = rowSums(rep_bfs > cutoff),
-  var = apply(rep_bfs, 1, var)
-)
-
-# > summary(bf_stats$avg)
-#     Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
-#  -1.1576  -0.9092  -0.8212  -0.6867  -0.6730 295.1854
-# > summary(bf_stats$med)
-#     Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
-#  -1.1921  -0.9474  -0.8738  -0.7632  -0.7511 295.1854
-
-bf_stats$sig_avg <- bf_stats$avg > cutoff # 76,262,
-bf_stats$sig_med <- bf_stats$med > cutoff # 52,674, 2285 unique vs avg
-bf_stats$sig_rep <- bf_stats$rep >= 4 # 4 = 28218, 19 unique vs avg
-bf_stats$sig_rep5 <- bf_stats$rep >= 5 # 5 = 11,388
-
-# Check the cumulative distribution of aggregated BFs
-bf_avg_ecdf <- ecdf(bf_stats$avg)
-bf_med_ecdf <- ecdf(bf_stats$med)
-
-# Correlation between BFs and abs rho/effect size is small ~0.07, lowers when looking at more stringent cutoffs al ~ 0.06, med ~ 0.045, rep4 ~ 0.035
-
-# Variance across replicates is better controlled by median than average
-# summary(bf_stats$var_bfs[bf_stats$sig_avg])
-#      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
-#     0.000     7.324    14.559    32.016    31.026 15176.274
-# summary(bf_stats$var_bfs[bf_stats$sig_med]) # median slightly lowers variance
-#      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
-#     0.000     5.981    13.276    31.342    30.345 15176.274
-# summary(bf_stats$var_bfs[bf_stats$sig_rep]) # even higher variance for most significant
-#      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.
-#     0.000     7.873    17.911    40.594    39.917 15176.274
-
-# Check distribution of the correlations
-# rho_cors <- cor(rep_rho)
-# print(rho_cors)
-#           V1        V2        V3        V4        V5
-# V1 1.0000000 0.7500832 0.7555189 0.7374246 0.7512302
-# V2 0.7500832 1.0000000 0.7510880 0.7639200 0.7606848
-# V3 0.7555189 0.7510880 1.0000000 0.7545652 0.7645635
-# V4 0.7374246 0.7639200 0.7545652 1.0000000 0.7620621
-# V5 0.7512302 0.7606848 0.7645635 0.7620621 1.0000000
-
-rho_stats <- data.frame(
-  rho_avg = rowMeans(rep_rho),
-  rho_med = apply(rep_rho, 1, median),
-  rho_var = apply(rep_rho, 1, var)
-)
-
-# Average and median don't look too different for the correlations
-# > summary(rho_stats$avg)
-#     Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
-# -0.33964 -0.02596  0.01713  0.01669  0.06016  0.30015
-# > summary(rho_stats$med)
-#     Min.  1st Qu.   Median     Mean  3rd Qu.     Max.
-# -0.34023 -0.02893  0.01685  0.01665  0.06302  0.29747
-
-abs_rho_avg_ecdf <- ecdf(abs(rho_stats$avg))
-abs_rho_med_ecdf <- ecdf(abs(rho_stats$med))
-
-ggplot(data.frame(x = c(-0.5, 2)), aes(x = x)) +
-  geom_hline(yintercept = c(0.9, 0.95, 0.99), linetype = 2) +
-  geom_vline(xintercept = c(1, 1.5), linetype = 2) +
-  stat_function(fun = bf_avg_ecdf, geom = "line", color = "red") +
-  stat_function(fun = bf_med_ecdf, geom = "line", color = "blue") +
-  labs(x = "Log10 Bayes factor", y = "Cumulative proportion of SNPs") +
-  annotate("text", x = 1.15, y = c(0.97, 0.96), label = c("Average", "Median"), color = c("red", "blue")) +
-  theme_classic()
-
-ggplot(data.frame(x = c(0.1, 0.3)), aes(x = x)) +
-  geom_hline(yintercept = c(0.9, 0.95, 0.99), linetype = 2) +
-  geom_vline(xintercept = seq(0.1, 0.3, 0.05), linetype = 2) +
-  stat_function(fun = abs_rho_avg_ecdf, geom = "line", color = "red") +
-  stat_function(fun = abs_rho_med_ecdf, geom = "line", color = "blue") +
-  labs(x = "Abs Spearman rho", y = "Cumulative proportion of SNPs") +
-  annotate("text", x = 0.15, y = c(0.94, 0.93), label = c("Average", "Median"), color = c("red", "blue")) +
-  theme_classic()
-
-# Number of replicates where signs consistent (positive)
-reps_consistent <- data.frame(
-  bfs = rowSums(rep_bfs > 0),
-  cors = rowSums(rep_rho > 0)
-)
-
-num_consistent <- table(reps_consistent$bfs)
-#       0       1       2       3       4       5
-# 5900359  883282  187258   76288   46009   31462
-
-num_consistent <- table(reps_consistent$cors)
-#       0       1       2       3       4       5
-# 1597115  733545  536088  567578  901743 2788589
-
-bf_stats <- cbind(bf_stats[, c(1:3,5:8)], rho_stats[1:2])
-fwrite(bf_stats, paste0(wd, "bf_stats.txt.gz")) # median 0.05 = 32089, 0.1 = 14981, look at how many independent within these
-
-```
-
 **Step 1) Using Bridget’s Annovar runs, get the SNP function and consequence annotations for the SNPs we tested**
 
 `python_outlier_annos.py` → `bayenv_maf5_2pops_annos.txt`
@@ -646,11 +388,8 @@ import os
 import numpy as np
 
 ANNO_DIR = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/vcf/baseline_filters_site_0.1_cohort_missing/annotation'
-SNPS = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_maf5_2pops_snp_aaf.txt'
-OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/bayenv_maf5_2pops_annos.txt'
-
-#SNPS = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/r1_bfs.txt'
-#OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/r1_outlier_annos.txt'
+SNPS = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/data/bayenv_maf5_2pops_snp_aaf.txt'
+OUT = '/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/bayenv/data/bayenv_maf5_2pops_annos.txt'
 
 # For each chromosome, open Bridget's anno file and run through list of SNPs to extract
 with open(SNPS, 'r') as sites, open (OUT, 'a') as out_file:
