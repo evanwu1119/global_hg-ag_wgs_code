@@ -4,7 +4,7 @@ This page details how all of the annotations used for downstream analyses were p
 
 ## Gene and gene set resources
 
-**Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by [downloading GMTs from the GOSt browser tool](https://biit.cs.ut.ee/gprofiler/gost), while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions. We tested 22,916 gene sets in total.**
+**Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by [downloading GMTs from the GOSt browser tool](https://biit.cs.ut.ee/gprofiler/gost), while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions.**
 
 `geneset_annot.R` → `go_kegg_hallmark_term2gene.rds` and `go_kegg_hallmark_term2name.rds`
 
@@ -51,7 +51,7 @@ saveRDS(go_kegg_hallmark_term2gene, "/project/lbarreiro/USERS/bridget/huntergath
 saveRDS(go_kegg_hallmark_term2name, "/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/go_kegg_hallmark_term2name.rds")
 ```
 
-**Step 2) Gene locations and annotations were obtained from Gencode V46 lifted over to GRCh37. We subsetted for all testable genes: genes in autosomal regions that were contained in at least one tested gene set. We therefore evaluated 23,317 genes and used this as our statistical background for ORA.**
+**Step 2) Gene locations and annotations were obtained from Gencode V46 lifted over to GRCh37. We subsetted for all testable genes: genes in autosomal regions that were contained in at least one tested gene set, and used this as our statistical background for ORA.**
 
 `geneset_test.R` → `hg19_genes.rds`
 
