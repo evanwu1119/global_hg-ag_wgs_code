@@ -211,12 +211,11 @@ done
 ```bash
 #!/bin/bash
 
-BAYENV=/project/lbarreiro/USERS/evanwu/software/bayenv2_public/bayenv2
 POP=34
 name="bayenv_maf5_2pops"
 
 # Estimate covariance matrix using ~100k random snps
-$BAYENV -i ${name}_random_snps${rep}.txt -p ${POP} -k 100000 -r ${RANDOM} > ${name}_matrix${rep}.out
+bayenv2 -i ${name}_random_snps${rep}.txt -p ${POP} -k 100000 -r ${RANDOM} > ${name}_matrix${rep}.out
 
 # Get last converged matrix
 tail -n $[ ${POP} + 1 ] ${name}_matrix${rep}.out > ${name}_matrix${rep}.txt
@@ -357,13 +356,13 @@ while IFS=' ' read -r n file; do
                         printf '%s\t' $line >> "tmp.${suffix}"
                         printf '\n' >> "tmp.${suffix}"
                         ((c--))
-                        $BAYENV -i "tmp.${suffix}" -e $ENVFILE -m $MATFILE -k $ITNUM -r $RANDOM -p $POPNUM -n $ENVNUM -t -c -o ${suffix}
+                        bayenv2 -i "tmp.${suffix}" -e $ENVFILE -m $MATFILE -k $ITNUM -r $RANDOM -p $POPNUM -n $ENVNUM -t -c -o ${suffix}
                 fi
         done < $SNPFILE
 
         # Append to finished BFs
         #cat ${suffix}.bf >> ../bfs/${suffix}.bf
-done < $BAD
+done < ${BAD}
 ```
 
 **Step 11) Move complete splits into same folders, concatenate, then paste the replicate runs to get our final data with 5 replicates of BFs and Spearman correlations per SNP**
