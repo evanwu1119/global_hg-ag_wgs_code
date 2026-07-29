@@ -4,7 +4,7 @@ This page details how all of the annotations used for downstream analyses were p
 
 ## Gene and gene set resources
 
-**Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by [downloading GMTs](https://biit.cs.ut.ee/gmt-helper/) while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions. We tested 22,916 gene sets in total.**
+**Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by [downloading GMTs from the GOSt browser tool](https://biit.cs.ut.ee/gprofiler/gost), while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions. We tested 22,916 gene sets in total.**
 
 `geneset_annot.R` → `go_kegg_hallmark_term2gene.rds` and `go_kegg_hallmark_term2name.rds`
 
