@@ -1,5 +1,7 @@
 # Annotation curation
 
+This page details how all of the annotations used for downstream analyses were processed if they were not used as available publicly or obtained from providers. Look out for usage of these output files in the the following code pages. 
+
 ## Gene and gene set resources
 
 **Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by [downloading GMTs]() while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions. We tested 22,916 gene sets in total.**
