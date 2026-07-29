@@ -354,7 +354,7 @@ plink --bfile freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing --het
 
 `heterozygosity.R` → `heterozygosity_outliers_to_exclude.tsv`
 
-```R
+```r
 ######################################
 ####  load packages and datasets  ####
 ######################################
@@ -456,7 +456,7 @@ awk '($15 == "2nd" || $15 == "FS" || $15 == "PO") {print $0}' ${prefix}.kin >> w
 
 `make_natora_inputs.R` → `natora_using_Inf_type.tsv`
 
-```R
+```r
 setwd("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/relatedness/baseline_filters_site_0.1_cohort_missing_nohet")
 
 # import the within KING outputs (no between relatives detected) that are already filtered for 2nd degree relatives based on Inf type
