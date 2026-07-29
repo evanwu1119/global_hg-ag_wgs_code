@@ -6,7 +6,7 @@ This page details the code needed to generate PCA, ADMIXTURE, MSMC2, and ROH res
 
 **Step 1) Create map of sampling locations for all populations to create Figure 1a.**
 
-```R
+```r
 
 ```
 
@@ -28,7 +28,7 @@ plink --vcf freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_n
 
 `rename_fam.sh` → `freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin.fam`
 
-```R
+```r
 # Rename first column using population labels
 ref <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
 fam <- read.table("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin.fam")
@@ -64,7 +64,7 @@ done
 
 `freeze2_global_pca.R`
 
-```R
+```r
 #######################
 ####    READ ME    ####
 #######################
@@ -127,7 +127,7 @@ names(region_colors) <- c("Oceania",
 
 `freeze2_regional_pcas.R`
 
-```R
+```r
 #######################
 ####    READ ME    ####
 #######################
@@ -347,7 +347,7 @@ save.image("freeze2_regional_pcas_v2.RData")
 
 `population_global_pca.R`
 
-```R
+```r
 library(ggplot2)
 library(ggnewscale)
 library(dplyr)
@@ -644,7 +644,7 @@ pong -m ${CONT}.multiplerun.Qfilemap -i ${CONT}.ind2pop -n ${CONT}.poporder.txt 
 
 `freeze2_admixture.R`
 
-```R
+```r
 #####################################
 #### Set dir and import packages ####
 #####################################
@@ -1031,7 +1031,7 @@ msmc2_Linux -t 6 -s -I 8,9,10,11,12,13,14,15 -o SMB.4ind.bootstrap${rep}.allchr.
 
 `ne_for_manuscript.R`
 
-```R
+```r
 library(ggplot2)
 library(dplyr)
 library(scales)
@@ -1244,7 +1244,7 @@ plink --bfile freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet
 
 `roh_figure.R` 
 
-```R
+```r
 ###################
 ####  READ ME  ####
 ###################
