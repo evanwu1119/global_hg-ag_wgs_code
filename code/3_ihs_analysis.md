@@ -29,7 +29,7 @@ ihsbin --hap ${pop}.impute.hap --map ${pop}.map --out ${pop}_iHS --minmaf 0.05 -
 
 `new_iHS_per_gene_all_pops_BCpipeline.R` → `new_iHS_per_gene_all_pops_lowconf_anc_annot_BCpipeline_gff3_df.RData`
 
-```R
+```r
 #########################################################################################
 #####                                   READ ME                                     #####
 #########################################################################################
@@ -164,7 +164,7 @@ save(gff3_results, file = "new_iHS_per_gene_all_pops_lowconf_anc_annot_BCpipelin
 
 `VIP_enrichment_iHS.R` → `VIP_enrichments.tsv`
 
-```R
+```r
 ##############################################
 ######            READ ME           ##########
 ##############################################
@@ -260,7 +260,7 @@ save.image("VIP_enrichment_iHS.RData")
 
 `enrichment_iHS.R` → `ihs_enrichments.tsv`
 
-```R
+```r
 ##########################
 ####      READ ME     ####
 ##########################
@@ -470,7 +470,7 @@ save.image("enrichment_iHS.RData")
 
 `endocrine_enrichment_iHS.R` → `ihs_endocrine_enrichments.tsv`
 
-```R
+```r
 ## ------------------------------------------------------------------
 ##  README
 ## ------------------------------------------------------------------
@@ -690,7 +690,7 @@ save.image("endocrine_enrichment_iHS.RData")
 
 `VIP_endocrine_enrichment_comps.R` → `all_subcat_level_enrichments_95th_percentile_for_supplement.csv`
 
-```R
+```r
 ## ------------------------------------------------------------------
 ##  README
 ## ------------------------------------------------------------------
@@ -1034,7 +1034,7 @@ save.image("VIP_endocrine_enrichment_comps.RData")
 
 `ihs_shared_enrich.Rmd {ihs nonsyn gene}`  
 
-```R
+```r
 library(data.table)
 library(GenomicRanges)
 library(ggplot2)
@@ -1222,7 +1222,7 @@ dev.off()
 
 `new_iHS_per_window_100kb.R` → `new_iHS_per_window_100kb_df.RData`
 
-```R
+```r
 #########################################################################################
 #####                                   READ ME                                     #####
 #########################################################################################
@@ -1366,7 +1366,7 @@ save(nsnps_100kb_interval, file="new_iHS_per_window_100kb_nsnps.df.RData")
 
 `enrich_cCREs_100kb.R ${tissue}` → `${tissue}_logistic_regression_ORs_CIs_pvals_all_pops_100kb.txt`, `${tissue}_iHS_100kb_with_cCRE_annot_all_pops.txt`, and `${tissue}_cCREs_100kb_fishers_meta.rds`
 
-```R
+```r
 #####################################
 #####         READ ME           #####
 #####################################
@@ -1531,7 +1531,7 @@ saveRDS(fishers_combined_pval, paste0("data/", tissue, "_cCREs_100kb_fishers_met
 
 `enrich_cCREs_100kb_multiregression.R` → `multiregression_tissue-specific.txt` and `fe_100kb_all_tissues.txt`
 
-```R
+```r
 #####################################
 #####         READ ME           #####
 #####################################
@@ -1704,7 +1704,7 @@ fixed_effect_data <- fixed_effect_data %>%
 
 `hg-ag_fe_models.R` → `supp_tab_4_hg_ag_meta_pairwise_pval.csv`
 
-```R
+```r
 library(ggplot2)
 library(dplyr)
 library(data.table)
@@ -1821,7 +1821,7 @@ fwrite(supp_tab_4, "figures/supp_tab_4_hg_ag_meta_pairwise_pval.csv")
 
 `immune_cCREs_100kb_CTspecific_condensed_model.R` → `immune_cCREs_100kb_CTspecific_condensed_model.RData`
 
-```R
+```r
 #####################################
 #####         READ ME           #####
 #####################################
@@ -2137,7 +2137,7 @@ save.image("immune_cCREs_100kb_CTspecific_condensed_model_v2.RData")
 
 `eQTL_enrichment_all_conditions.R` → Harrison: `${cond}_eQTL_enrichment.RData` and `Harrison_subset_for_5D.RData`, Natri: `enrichment_of_perm_sig_eQTLs.RData` and `Natri_subset_for_5D.RData`
 
-```R
+```r
 ###############################################
 ####   Enrichment of Harrison‑et‑al. eQTL  ####
 ####       for GARD, CTL and LPS           ####
@@ -2380,7 +2380,7 @@ save(natri_subset, file = "Natri_subset_for_5D.RData")
 
 `eqtl_maf_bin_ihs.R ${cond}` → `eqtl_pop_maf_dist_${cond}.tsv` and `Harrison_Natri_chisq.tsv`
 
-```R
+```r
 library(dplyr)
 library(data.table)
 library(stringr)
@@ -2501,7 +2501,7 @@ fwrite(all_populations_enrichment,
 
 `ihs_shared_enrich.Rmd {eqtl maf dist}`
 
-```R
+```r
 library(data.table)
 library(ggplot2)
 library(tidyverse)
@@ -2526,7 +2526,7 @@ df_meta$cut <- case_when(
 colnames(df_meta)[c(2,5)] <- c("q25", "q75")
 df_meta <- left_join(df_meta, metadata, by = c("pop" = "pop_code"))
 
-pdf(0aste0(wd, "figures/supp_fig7_eqtl_maf_dist_subset.pdf"), height = 3, width = 5)
+pdf(paste0(wd, "figures/supp_fig7_eqtl_maf_dist_subset.pdf"), height = 3, width = 5)
 filter(df_meta, cut == 0 &
          (condition != "Natri" & pop %in% c("TWA", "KIG") |
           condition == "Natri" & pop %in% c("KWI", "MTW", "SMB"))) %>%
@@ -2546,7 +2546,7 @@ dev.off()
 
 `mccre_plots.Rmd`
 
-```R
+```r
 library(ggplot2)
 library(dplyr)
 library(data.table)
