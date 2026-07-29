@@ -104,7 +104,7 @@ rm tmp1.txt tmp2.txt
 
 ## KEGG gene set curation (for metabolism and endocrine gene sets)
 
-**Step 1) Our goal is to extract all KEGG genes from the Metabolism (09100) module and Endocrine (01952) submodule. All pathway information in `KEGG_09100_Metabolism/${subcategory}_pathways.txt` and `endocrine/endocrine_system_reference.txt` is comprised of the codes for pathways within each subcategory. We use the following as examples of getting one pathway from one subcategory:**
+**Step 1) Our goal is to extract all KEGG genes from the Metabolism (09100) module and Endocrine (09152) submodule. All pathway information in `KEGG_09100_Metabolism/${subcategory}_pathways.txt` and `endocrine/endocrine_system_reference.txt` is comprised of the codes for pathways within each subcategory. We use the following as examples of getting one pathway from one subcategory:**
 - Metabolism (09100)
     - Carbohydrate metabolism (09101) 
         - E.g. for Glycolysis / Gluconeogenesis pathway (ko00010) genes, do [`https://rest.kegg.jp/get/hsa00010`](https://rest.kegg.jp/get/hsa00010)
