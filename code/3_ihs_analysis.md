@@ -256,7 +256,7 @@ fwrite(VIP_enrichment_df, "VIP_enrichments.tsv", sep = "\t")
 save.image("VIP_enrichment_iHS.RData")
 ```
 
-**Step 2) Test the enrichment of metabolic genes and subcategories of metabolic genes (e.g. carbohydrate, lipid, etc.) for iHS scores > 99% empirical percentile compared to background. Refer to the code page `0_geneset_annotations` for documentation on how these gene sets were curated.**
+**Step 2) Test the enrichment of metabolic genes and subcategories of metabolic genes (e.g. carbohydrate, lipid, etc.) for iHS scores > 99% empirical percentile compared to background. Refer to the code page `0_annotation_curation` for documentation on how these gene sets were curated.**
 
 `enrichment_iHS.R` → `ihs_enrichments.tsv`
 
