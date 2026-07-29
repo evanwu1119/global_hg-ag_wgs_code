@@ -49,13 +49,258 @@ Nextflow: 22.10.7
 nf-core/sarek: 3.1.2
 
 # Tools and software:
-angsd 
-bcftools	1.18.0
-gatk	4.6.1
-plink	1.19.0
+bcftools:	1.18.0
+gatk:	4.6.1
+annovar: 2020Jun08
+plink: v1.90b6.21
+plink2: v2.0.0-a.7LM
+king: 2.3.0
+NAToRA: 1.0
+SHAPEIT5: 5.1.1
+htslib: 1.22.1
+samtools: 1.22.1
+admixture: 1.3.0
+pong: 1.5
+msmc2: v2.1.3
+msmc-tools: 1.0
+SHAPEIT2: v2.r904
+vcftools: 0.1.16
+hapbin: v1.3.0
+bayenv2: 2.0
 
 # R analysis and packages:
-R	4.3.1
+R: 4.3.1
+attached base packages:
+[1] stats4    parallel  stats     graphics  grDevices utils     datasets
+[8] methods   base
+
+other attached packages:
+ [1] openxlsx_4.2.8.1            EnrichmentBrowser_2.32.0
+ [3] graph_1.80.0                SummarizedExperiment_1.32.0
+ [5] MatrixGenerics_1.14.0       matrixStats_1.4.1
+ [7] gtools_3.9.5                ggnewscale_0.5.0
+ [9] ggfastman_1.2               khroma_1.16.0
+[11] clusterProfiler_4.10.1      rtracklayer_1.62.0
+[13] plyranges_1.22.0            GenomicRanges_1.54.1
+[15] GenomeInfoDb_1.38.8         metafor_4.6-0
+[17] numDeriv_2016.8-1.1         metadat_1.4-0
+[19] Matrix_1.6-4                org.Hs.eg.db_3.18.0
+[21] AnnotationDbi_1.64.1        IRanges_2.36.0
+[23] S4Vectors_0.40.2            Biobase_2.62.0
+[25] BiocGenerics_0.48.1         doParallel_1.0.17
+[27] iterators_1.0.14            foreach_1.5.2
+[29] scales_1.4.0                cowplot_1.1.3
+[31] here_1.0.1                  data.table_1.16.2
+[33] paletteer_1.6.0             colorspace_2.1-1
+[35] patchwork_1.3.0             gridExtra_2.3
+[37] plotly_4.10.4               ggh4x_0.2.8
+[39] ggrepel_0.9.6               ggforce_0.4.2
+[41] lubridate_1.9.4             forcats_1.0.1
+[43] stringr_1.5.1               dplyr_1.1.4
+[45] purrr_1.0.2                 readr_2.1.5
+[47] tidyr_1.3.1                 tibble_3.2.1
+[49] ggplot2_4.0.3               tidyverse_2.0.0
+[51] ggpattern_1.3.1             concaveman_1.2.0
+
+loaded via a namespace (and not attached):
+  [1] fs_1.6.5
+  [2] ProtGenerics_1.34.0
+  [3] bitops_1.0-9
+  [4] enrichplot_1.22.0
+  [5] HDO.db_0.99.1
+  [6] httr_1.4.7
+  [7] RColorBrewer_1.1-3
+  [8] Rgraphviz_2.46.0
+  [9] tools_4.3.1
+ [10] backports_1.5.0
+ [11] utf8_1.2.4
+ [12] R6_2.6.1
+ [13] lazyeval_0.2.2
+ [14] withr_3.0.2
+ [15] prettyunits_1.2.0
+ [16] GGally_2.2.1
+ [17] cli_3.6.3
+ [18] scatterpie_0.2.4
+ [19] Homo.sapiens_1.3.1
+ [20] ggbio_1.50.0
+ [21] KEGGgraph_1.62.0
+ [22] Rsamtools_2.18.0
+ [23] yulab.utils_0.1.7
+ [24] gson_0.1.0
+ [25] foreign_0.8-87
+ [26] DOSE_3.28.2
+ [27] dichromat_2.0-0.1
+ [28] BSgenome_1.70.2
+ [29] rstudioapi_0.17.1
+ [30] RSQLite_2.3.7
+ [31] generics_0.1.4
+ [32] gridGraphics_0.5-1
+ [33] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
+ [34] BiocIO_1.12.0
+ [35] zip_2.3.1
+ [36] GO.db_3.18.0
+ [37] fansi_1.0.6
+ [38] abind_1.4-8
+ [39] lifecycle_1.0.4
+ [40] yaml_2.3.10
+ [41] mathjaxr_1.8-0
+ [42] qvalue_2.34.0
+ [43] SparseArray_1.2.4
+ [44] BiocFileCache_2.10.2
+ [45] grid_4.3.1
+ [46] blob_1.2.4
+ [47] crayon_1.5.3
+ [48] lattice_0.22-6
+ [49] annotate_1.80.0
+ [50] GenomicFeatures_1.54.4
+ [51] KEGGREST_1.42.0
+ [52] pillar_1.9.0
+ [53] knitr_1.48
+ [54] fgsea_1.28.0
+ [55] rjson_0.2.23
+ [56] codetools_0.2-20
+ [57] fastmatch_1.1-4
+ [58] glue_1.8.0
+ [59] ggfun_0.1.7
+ [60] vctrs_0.6.5
+ [61] png_0.1-8
+ [62] treeio_1.26.0
+ [63] gtable_0.3.6
+ [64] rematch2_2.1.2
+ [65] cachem_1.1.0
+ [66] xfun_0.48
+ [67] S4Arrays_1.2.1
+ [68] tidygraph_1.3.1
+ [69] nlme_3.1-166
+ [70] ggtree_3.10.1
+ [71] bit64_4.5.2
+ [72] progress_1.2.3
+ [73] filelock_1.0.3
+ [74] rprojroot_2.0.4
+ [75] rpart_4.1.23
+ [76] DBI_1.2.3
+ [77] Hmisc_5.2-0
+ [78] nnet_7.3-20
+ [79] tidyselect_1.2.1
+ [80] bit_4.5.0
+ [81] compiler_4.3.1
+ [82] curl_5.2.3
+ [83] htmlTable_2.4.3
+ [84] xml2_1.3.6
+ [85] DelayedArray_0.28.0
+ [86] shadowtext_0.1.4
+ [87] checkmate_2.3.2
+ [88] RBGL_1.78.0
+ [89] rappdirs_0.3.3
+ [90] digest_0.6.37
+ [91] rmarkdown_2.28
+ [92] XVector_0.42.0
+ [93] htmltools_0.5.8.1
+ [94] pkgconfig_2.0.3
+ [95] base64enc_0.1-3
+ [96] dbplyr_2.5.0
+ [97] fastmap_1.2.0
+ [98] ensembldb_2.26.0
+ [99] rlang_1.1.4
+[100] htmlwidgets_1.6.4
+[101] farver_2.1.2
+[102] jsonlite_1.8.9
+[103] BiocParallel_1.36.0
+[104] GOSemSim_2.28.1
+[105] VariantAnnotation_1.48.1
+[106] RCurl_1.98-1.16
+[107] magrittr_2.0.4
+[108] Formula_1.2-5
+[109] GenomeInfoDbData_1.2.11
+[110] ggplotify_0.1.2
+[111] munsell_0.5.1
+[112] Rcpp_1.0.13
+[113] ape_5.8
+[114] viridis_0.6.5
+[115] stringi_1.8.4
+[116] ggraph_2.2.1
+[117] zlibbioc_1.48.2
+[118] MASS_7.3-60.0.1
+[119] plyr_1.8.9
+[120] ggstats_0.7.0
+[121] LDlinkR_1.4.0
+[122] Biostrings_2.70.3
+[123] graphlayouts_1.2.0
+[124] splines_4.3.1
+[125] hms_1.1.4
+[126] igraph_2.1.1
+[127] reshape2_1.4.4
+[128] biomaRt_2.58.2
+[129] XML_3.99-0.17
+[130] evaluate_1.0.1
+[131] biovizBase_1.50.0
+[132] BiocManager_1.30.25
+[133] tzdb_0.4.0
+[134] tweenr_2.0.3
+[135] polyclip_1.10-7
+[136] xtable_1.8-4
+[137] restfulr_0.0.15
+[138] AnnotationFilter_1.26.0
+[139] tidytree_0.4.6
+[140] viridisLite_0.4.2
+[141] OrganismDbi_1.44.0
+[142] aplot_0.2.3
+[143] memoise_2.0.1
+[144] GenomicAlignments_1.38.2
+[145] cluster_2.1.6
+[146] timechange_0.3.0
+[147] GSEABase_1.64.0
+[148] otel_0.2.0
+[149] S7_0.2.2
+[150] digest_0.6.39
 
 # Python code and packages:
-python 3.0.0
+python: 3.0.0
+coloredlogs 15.0.1
+typing_extensions 4.8.0
+parso 0.8.3
+pandas 2.1.1
+ptyprocess 0.7.0
+ipython 8.16.1
+pysam 0.21.0
+decorator 5.1.1
+click 8.1.7
+backports.functools-lru-cache 1.6.5
+python-dateutil 2.8.2
+cyvcf2 0.30.22
+exceptiongroup 1.1.3
+executing 1.2.0
+jupyter_client 8.4.0
+Pygments 2.16.1
+pip 23.2.1
+wcwidth 0.2.8
+matplotlib-inline 0.1.6
+setuptools 68.2.2
+stack-data 0.6.2
+tornado 6.3.3
+traitlets 5.11.2
+pytz 2023.3.post1
+humanfriendly 10.0
+pyzmq 25.1.1
+debugpy 1.8.0
+prompt-toolkit 3.0.39
+ipykernel 6.25.2
+jupyter_core 5.4.0
+wheel 0.41.2
+six 1.16.0
+importlib-metadata 6.8.0
+platformdirs 3.11.0
+jedi 0.19.1
+PyVCF 0.6.8
+pickleshare 0.7.5
+packaging 23.2
+tzdata 2023.3
+backcall 0.2.0
+asttokens 2.4.0
+pexpect 4.8.0
+pure-eval 0.2.2
+comm 0.1.4
+psutil 5.9.5
+zipp 3.17.0
+nest-asyncio 1.5.8
+numpy 1.26.0
