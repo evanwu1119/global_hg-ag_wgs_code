@@ -2,9 +2,16 @@
 
 ## Gene and gene set resources
 
-**Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by downloading GMTs while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions. We tested 22,916 gene sets in total.**
+**Step 1) The set of all gene sets tested was a combination of the most up-to-date GO, KEGG, and Hallmark gene set annotations. GO annotations were obtained by [downloading GMTs]() while the others were from querying `bioMart`. These were then concatenated and formatted into appropriate objects for `clusterProfiler` enrichment functions. We tested 22,916 gene sets in total.**
+
+`geneset_annot.R` → `go_kegg_hallmark_term2gene.rds` and `go_kegg_hallmark_term2name.rds`
 
 ```r
+library(clusterProfiler)
+library(data.table)
+library(EnrichmentBrowser)
+library(tidyverse)
+
 # Import Hallmark, KEGG, and GO genesets into TERM2GENE and TERM2NAME tables
 go_bp_term2gene <- read.gmt("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/hsapiens.GO:BP.name.gmt") # 15472 genesets
 go_bp_term2name <- fread("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/GO_BP_names.txt",header = F)
@@ -40,14 +47,19 @@ go_kegg_hallmark_term2gene <- rbind(go_bp_term2gene, go_mf_term2gene, go_cc_term
 go_kegg_hallmark_term2name <- rbind(go_bp_term2name, go_mf_term2name, go_cc_term2name, kegg_term2name, hallmark_term2name) # 22916 genesets tested total
 saveRDS(go_kegg_hallmark_term2gene, "/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/go_kegg_hallmark_term2gene.rds")
 saveRDS(go_kegg_hallmark_term2name, "/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/go_kegg_hallmark_term2name.rds")
-go_kegg_hallmark_term2gene <- readRDS("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/go_kegg_hallmark_term2gene.rds")
-go_kegg_hallmark_term2name <- readRDS("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/pbs/gs_data/go_kegg_hallmark_term2name.rds")
-
 ```
 
 **Step 2) Gene locations and annotations were obtained from Gencode V46 lifted over to GRCh37. We subsetted for all testable genes: genes in autosomal regions that were contained in at least one tested gene set. We therefore evaluated 23,317 genes and used this as our statistical background for ORA.**
 
+`geneset_test.R` → `hg19_genes.rds`
+
 ```r
+library(data.table)
+library(tidyverse)
+library(GenomicRanges)
+library(plyranges)
+library(rtracklayer)
+
 # Get testable genes based on all the genesets we are testing and intersect with Gencode V46, we get a total of 21,317 genes as our background
 hg19_genes <- import("gs_data/gencode.v46lift37.basic.annotation.gtf.gz")
 hg19_genes <- hg19_genes %>% filter(type == "gene" & gene_name %in% unique(go_kegg_hallmark_term2gene$gene)) %>% dplyr::select(gene_id, gene_name)
@@ -62,6 +74,8 @@ background <- unique(sort(hg19_genes$gene_name)) # statistical background for GO
 
 **Step 1) Some of our enrichment results were too large and redundant due to GO's hierarchical structure, so we wanted to grab more meaningful functions to intrepret. Get term IDs of first children of the root terms (60 terms).**
 
+`get_go_child1.sh` → `GO_child1.txt`
+
 ```bash
 curl -X GET -H 'Accept:application/json' 'https://www.ebi.ac.uk/QuickGO/services/ontology/go/terms/GO%3A0008150%2CGO%3A0005575%2CGO%3A0003674/children' | \
 	grep -oh "\w*GO:\w*" | \
@@ -69,6 +83,8 @@ curl -X GET -H 'Accept:application/json' 'https://www.ebi.ac.uk/QuickGO/services
 ```
 
 **Step 2) Get term ID and names of second children (1,413 terms), some first children (4 terms) are also second children but this will exclude those as well.**
+
+`get_go_child2.sh` → `GO_child2.txt`
 
 ```bash
 QUERY=$(awk '(ORS="%2C"){sub(":","%3A",$1)}1' GO_child1.txt)
@@ -96,7 +112,7 @@ rm tmp1.txt tmp2.txt
 
 **Step 2) Run script to fetch data from KEGG API using `${subcategory}_pathways.txt` files for Metabolism, and the `endocrine_system_reference.txt` file for Endocrine system.** 
 
-`fetch_KEGG_genes.sh ${subcategory}` `${subcategory}_${pathway}_genes.txt`
+`fetch_KEGG_genes.sh ${subcategory}` → `${subcategory}_${pathway}_genes.txt`
 
 ```bash
 #!/bin/bash
@@ -121,6 +137,8 @@ done
 
 **Step 3) Concatenate each pathway’s gene list under the broader category (e.g. Carbohydrate metabolism, Energy metabolism).**
 
+`concat_KEGG_genes.sh` → `${category}_ALLGENES.txt`
+
 ```bash
 for genes_file in *_genes.txt; do
     if [ -f "$genes_file" ]; then
@@ -136,11 +154,11 @@ cat *ALLGENES.txt > 09100_METABOLISM_ALLGENES.txt
 
 ## cCRE annotations
 
-**Step 1) Liftover annotation file from providers from build hg38 to hg37 using [https://genome.ucsc.edu/cgi-bin/hgLiftOver](https://genome.ucsc.edu/cgi-bin/hgLiftOver) with `${tissue}-cCREs_GRCh38.bed` as the input. The resulting file `lifted_${tissue}-cCREs_GRCh37.bed` has a few issues that need to be cleaned up.**
+**Step 1) Liftover annotation file from providers from build hg38 to hg37 using [UCSC LiftOver in-browser](https://genome.ucsc.edu/cgi-bin/hgLiftOver) with `${tissue}-cCREs_GRCh38.bed` as the input. The resulting file `lifted_${tissue}-cCREs_GRCh37.bed` has a few issues that need to be cleaned up.**
 
 **Step 2) Clean up dataframes. Replace names and inputs with other tissue files for same outputs.** 
 
-`i-cCREs_liftover_cleanup.R` `${tissue}-cCREs_GRCh37.tsv`
+`i-cCREs_liftover_cleanup.R` → `${tissue}-cCREs_GRCh37.tsv`
 
 ```r
 #####################################
