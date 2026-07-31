@@ -851,7 +851,10 @@ plot_A <- ggplot(df_meta_subset, aes(x = Percentile, y = Enrichment_ratio,
   guides(shape = "none", fill = "none", 
          color = guide_legend(override.aes = list(color = c("#FDAE61", "#C11C84", "#40E0D0"), fill = c("#FDAE61", "#C11C84", "#40E0D0"), shape = c(25, 21, 22))))
 
-ggsave("Fig2A_broad_enrichment_curbes_by_region.pdf", plot = plot_A, width = 11, height = 3.5, units = "in", device = cairo_pdf)
+fwrite(df_meta_subset, "fig_3a_source.csv")
+saveRDS(plot_A, "fig_3a.rds")
+
+
 #####---------------------------------------------
 ###    PLOTTING PANEL B SUBGROUP METABOLIC COMPS
 #####---------------------------------------------
@@ -954,10 +957,13 @@ plot_B <- ggplot(metabolic_subplot, aes(x = OR, y = pop, color = subsistence, fi
     legend.position = "none"
   )
 
-ggsave("Fig2B_subcat_ORs_by_pop.pdf", plot = plot_B, width = 9, height = 5, units = "in", device = cairo_pdf)
+fwrite(metabolic_subplot, "fig_3b_source.csv")
+saveRDS(plot_B, "fig_3b.rds")
 
-p3 <- plot_grid(plot_A, plot_B, labels = c("a", "b"), nrow = 2, rel_heights = c(0.5, 1))
-save_plot("final/Fig3.pdf", p3, base_width = 7, base_height = 6)
+p3a <- readRDS("fig_3a.rds")
+p3b <- readRDS("fig_3b.rds")
+p3 <- plot_grid(p3a, p3b labels = c("a", "b"), nrow = 2, rel_heights = c(0.5, 1))
+save_plot("Fig3.pdf", p3, base_width = 7, base_height = 6)
 
 # Get ORs and CI ranges for paper
 
