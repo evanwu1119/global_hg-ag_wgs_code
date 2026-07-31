@@ -176,6 +176,50 @@ names(region_colors) <- c("Oceania",
                           "West Central Africa",
                           "Southern Africa"
 )
+
+pca_dat <- merge(eigenvec, meta, by = c("study_ID", "pop_code"),) %>% mutate(region = factor(region, levels=names(region_colors)))
+
+subsistence_shape <- c(25, 21, 22)
+names(subsistence_shape) <- unique(pca_dat$subsistence)
+
+# define label colors
+labs <- filter(pca_dat, !duplicated(pca_dat$region)) %>% select(region)
+rgbs <- col2rgb(region_colors[labs$region])
+labs$txt_color <- apply(rgbs, 2, function(x) {
+  as.character(x[1] * 0.299 + x[2] * 0.587 + x[3] * 0.114 <= 150)
+})
+labs$rtxt <- as.character(labs$region)
+labs$rtxt[c(4,7)] <- c("West Central\nAfrica", "East Central\nAfrica")
+labs$x <- c(-0.018, -0.03, -0.03, 0.05, 0.018, 0.03, 0.05, -0.035)
+labs$y <- c(0.01, -0.01, -0.02, -0.035, 0.0, 0.11, -0.015, 0.01)
+
+subs_region_bar <- pca_dat %>%
+  mutate(region= factor(region, levels = c(names(region_colors)))) %>%
+  ggplot(aes(y= fct_rev(subsistence), fill = region)) +
+  geom_bar(color= "darkgray") +
+  scale_fill_manual(values = region_colors) +
+  ylab("") + xlab("Number of samples") +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "none")
+ggsave("test.pdf", subs_region_bar, "pdf", width = 4, height = 4, units = "in")
+bar_grob <- ggplotGrob(subs_region_bar)
+
+main_pc_plot <- pca_dat %>%
+  ggplot(aes(x= PC1, y=PC2, fill = region)) +
+  geom_point(aes(shape = subsistence), color= "black",
+             size= 1, alpha = 0.7) +
+  annotation_custom(bar_grob, xmin = -0.04, xmax = 0.015, ymin = 0.05, ymax = 0.125) +
+  scale_shape_manual(values = subsistence_shape) +
+  scale_fill_manual(values = region_colors) +
+  scale_color_manual(values = region_colors) +
+  new_scale_color() +
+  geom_label(aes(x = x, y = y, label = rtxt, color = txt_color), data = labs,
+             size = 5, size.unit = "pt", linewidth = 0) +
+  labs(x = NULL, y = NULL) +
+  scale_color_manual(values = c("FALSE" = "black", "TRUE" = "white")) +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "none") +
+  labs(x = paste0("PC1 (", pve[1,], "%)"), y = paste0("PC2 (", pve[2,], "%)"))
 ```
 
 **Step 5) Plot continental PCAs to create Figure 1c.**
@@ -234,42 +278,28 @@ oceania <- merge(eigenvec, metadata, by.x = "sample_name", by.y = "study_ID", al
 
 # Ensure the dataset includes the pop_sub_label column and regions are ordered
 oceania <- oceania %>%
+  select(sample, PC_1, PC_2, pop_code, subsistence) %>% 
   mutate(
     subsistence = factor(subsistence), # Ensure regions are ordered
-    pop_sub_label = paste0(population_code, " (",subsistence,")") # Create combined labels
+    cont = "Oceania"
   ) %>% arrange(subsistence, population_code)
 
 
-# Create named shape vector for pop_region_label
-shapes_for_pop_sub <- setNames(
-  shapes_for_subsistence[as.character(oceania$subsistence)], # Match shapes to subsistence
-  oceania$pop_sub_label)
-
-colors_for_pop_sub <- setNames(
-  colours_for_pop[oceania$population_code], # Map colors to population codes
-  oceania$pop_sub_label)
-
-fills_for_pop_sub <- setNames(
-  alpha(colours_for_pop[oceania$population_code], 0.5), # Make fills 50% transparent
-  oceania$pop_sub_label
-)
-
-oceania_plot <- ggplot(data = oceania, aes(PC_1, PC_2, color = pop_sub_label, shape = pop_sub_label, fill = pop_sub_label)) +
-  geom_point(size = 1, stroke = 0.2) + # Adjust size if needed
-  scale_shape_manual(values = shapes_for_pop_sub) +
-  scale_color_manual(values = colors_for_pop_sub) +
-  scale_fill_manual(values = fills_for_pop_sub) +
-  theme_classic() +
+oceania_plot <- ggplot(filter(all_conts, cont == "Oceania"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
+  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
+  scale_shape_manual(values = shapes_for_subsistence) +
+  scale_color_manual(values = colours_for_pop) +
+  scale_fill_manual(values = colours_for_pop) +
   labs(x = paste0("PC1 (", pve[1], "%)"),
        y = paste0("PC2 (", pve[2], "%)"),
        color = NULL, shape = NULL, fill = NULL) +
+  theme_classic(base_size = 7) +
+  facet_wrap(~ cont) +
   theme(
-    legend.position = "top",
-    legend.spacing.y = unit(0.3, "cm"),
-    legend.text = element_text(size = 6),
-    legend.key.size = unit(0.3, "cm"),
-
-oceania_plot
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold")
+  )
 
 
 ######################
@@ -292,45 +322,28 @@ asia <- merge(eigenvec, metadata, by.x = "sample_name", by.y = "study_ID", all.x
 
 # Ensure the dataset includes the pop_sub_label column and regions are ordered
 asia <- asia %>%
+  select(sample, PC_1, PC_2, pop_code, subsistence) %>% 
   mutate(
     subsistence = factor(subsistence), # Ensure regions are ordered
-    pop_sub_label = paste0(population_code, " (",subsistence,")") # Create combined labels
-  ) %>%
-  arrange(subsistence, population_code)
+    cont = "Asia"
+  ) %>% arrange(subsistence, population_code)
 
 
-# Create named shape vector for pop_region_label
-shapes_for_pop_sub <- setNames(
-  shapes_for_subsistence[as.character(asia$subsistence)], # Match shapes to subsistence
-  asia$pop_sub_label)
-
-colors_for_pop_sub <- setNames(
-  colours_for_pop[asia$population_code], # Map colors to population codes
-  asia$pop_sub_label)
-
-fills_for_pop_sub <- setNames(
-  alpha(colours_for_pop[asia$population_code], 0.5), # Make fills 50% transparent
-  asia$pop_sub_label
-)
-
-asia_plot <- ggplot(data = asia, aes(PC_1, PC_2, color = pop_sub_label, shape = pop_sub_label, fill = pop_sub_label)) +
-  geom_point(size = 1, stroke = 0.2) + # Adjust size if needed
-  scale_shape_manual(values = shapes_for_pop_sub) +
-  scale_color_manual(values = colors_for_pop_sub) +
-  scale_fill_manual(values = fills_for_pop_sub) +
-  theme_classic() +
+asia_plot <- ggplot(filter(all_conts, cont == "Asia"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
+  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
+  scale_shape_manual(values = shapes_for_subsistence) +
+  scale_color_manual(values = colours_for_pop) +
+  scale_fill_manual(values = colours_for_pop) +
   labs(x = paste0("PC1 (", pve[1], "%)"),
        y = paste0("PC2 (", pve[2], "%)"),
        color = NULL, shape = NULL, fill = NULL) +
+  theme_classic(base_size = 7) +
+  facet_wrap(~ cont) +
   theme(
-    legend.position = "top",
-    legend.spacing.y = unit(0.3, "cm"),
-    legend.text = element_text(size = 6),
-    legend.key.size = unit(0.3, "cm"),
-    legend.title = element_text(size = 7, face = "bold")
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold")
   )
-
-asia_plot
 
 
 ########################
@@ -353,30 +366,28 @@ africa <- merge(eigenvec, metadata, by.x = "sample_name", by.y = "study_ID", all
 
 # Ensure the dataset includes the pop_sub_label column and regions are ordered
 africa <- africa %>%
+  select(sample, PC_1, PC_2, pop_code, subsistence) %>% 
   mutate(
     subsistence = factor(subsistence), # Ensure regions are ordered
-    pop_sub_label = paste0(population_code, " (",subsistence,")") # Create combined labels
-  ) %>%
-  arrange(subsistence, population_code)
+    cont = "Africa"
+  ) %>% arrange(subsistence, population_code)
 
 
-# Create named shape vector for pop_region_label
-shapes_for_pop_sub <- setNames(
-  shapes_for_subsistence[as.character(africa$subsistence)], # Match shapes to subsistence
-  africa$pop_sub_label)
-
-colors_for_pop_sub <- setNames(
-  colours_for_pop[africa$population_code], # Map colors to population codes
-  africa$pop_sub_label)
-
-fills_for_pop_sub <- setNames(
-  alpha(colours_for_pop[africa$population_code], 0.5), # Make fills 50% transparent
-  africa$pop_sub_label
-)
-
-africa_plot <- ggplot(data = africa, aes(PC_1, PC_2, color = pop_sub_label, shape = pop_sub_label, fill = pop_sub_label)) +
-  geom_point(size = 1, stroke = 0.2) + # Adjust size if needed
-  scale_shape_manual(values = shapes_for_pop_sub) +
+africa <- ggplot(filter(all_conts, cont == "Africa"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
+  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
+  scale_shape_manual(values = shapes_for_subsistence) +
+  scale_color_manual(values = colours_for_pop) +
+  scale_fill_manual(values = colours_for_pop) +
+  labs(x = paste0("PC1 (", pve[1], "%)"),
+       y = paste0("PC2 (", pve[2], "%)"),
+       color = NULL, shape = NULL, fill = NULL) +
+  theme_classic(base_size = 7) +
+  facet_wrap(~ cont) +
+  theme(
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold")
+  )
 
 
 ######################################
@@ -384,12 +395,9 @@ africa_plot <- ggplot(data = africa, aes(PC_1, PC_2, color = pop_sub_label, shap
 ######################################
 library(cowplot)
 
-# Combine the plots side by side, but without legends
-asia_plot_no_legend <- asia_plot + theme(legend.position = "none")
-oceania_plot_no_legend <- oceania_plot + theme(legend.position = "none")
-africa_plot_no_legend <- africa_plot + theme(legend.position = "none")
-
-composite <- plot_grid(asia_plot_no_legend, oceania_plot_no_legend, africa_plot_no_legend, ncol = 3, align = "v")
+# Combine the plots side by side
+all_conts <- rbind(africa, asia, oceania)
+composite <- plot_grid(asia_plot, oceania_plot, africa_plot, ncol = 3, align = "v")
 
 out <- here("Fig1_PCA_plots")
 three_regions_pca_file <- here(out,"three_regions_pca_plot.pdf")
