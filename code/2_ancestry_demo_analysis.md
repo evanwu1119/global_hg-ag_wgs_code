@@ -141,6 +141,7 @@ library(data.table)
 library(here)
 library(concaveman)
 library(cowplot)
+library(ggnewscale)
 
 out <- here("Fig1_PCA_plots")
 dir.create(out)
@@ -760,8 +761,8 @@ colnames(m) <- c("famid", "sampleid", "pat", "mat", "sex", "phenotype")
 l_df <- cbind(q, m[,c(1,2)])
 colnames(l_df) <- c(seq(1:k), 'pop', 'id')
 l_df <- l_df %>% drop_na(pop)
-gath_L_df <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
-gath_L_df <- gath_L_df %>% filter(pop != "ORR")
+asia <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
+asia <- asia %>% filter(pop != "ORR")
 
 # order populations using metadata region and country
 metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
@@ -779,9 +780,7 @@ pop_order <- unique(metadata$pop_code)
 # define however many colours there are for K value
 pop_color <- c("sienna4", "firebrick1", "orchid")
 
-asia_init <- ggplot(data=gath_L_df, aes(x=reorder(id, value, function(x){max(x)}), y=value,
-                                          fill=reorder(K, sort(as.integer(K)))))
-asia_p <- asia_init +
+asia_p <- ggplot(data=asia, aes(x=reorder(id, value, function(x){max(x)}), y=value, fill=reorder(K, sort(as.integer(K))))) +
   geom_bar(stat="identity", width=1) +
   scale_fill_manual(values = pop_color) +
   scale_y_continuous(expand=c(0, 0)) +
@@ -802,10 +801,8 @@ asia_p <- asia_init +
   labs(fill="K") +
   guides(fill="none")
 
-asia_p
 
 # OCEANIA (K=2)
-
 q <- read.table("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_oceania_0.01_maf_pruned.K2r2.Q")
 k <- 2
 m <- read.table("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_oceania_0.01_maf_pruned.fam")
@@ -815,7 +812,7 @@ colnames(m) <- c("famid", "sampleid", "pat", "mat", "sex", "phenotype")
 l_df <- cbind(q, m[,c(1,2)])
 colnames(l_df) <- c(seq(1:k), 'pop', 'id')
 l_df <- l_df %>% drop_na(pop)
-gath_L_df <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
+oceania <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
 
 # order populations using metadata region and country
 metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
@@ -833,9 +830,7 @@ pop_order <- unique(metadata$pop_code)
 # define however many colours there are for K value
 pop_color <- c("lightblue2", "slateblue2", "black")
 
-oceania_init <- ggplot(data=gath_L_df, aes(x=reorder(id, value, function(x){max(x)}), y=value,
-                                        fill=reorder(K, sort(as.integer(K)))))
-oceania_p <- oceania_init +
+oceania_p <- ggplot(data=oceania, aes(x=reorder(id, value, function(x){max(x)}), y=value, fill=reorder(K, sort(as.integer(K))))) +
   geom_bar(stat="identity", width=1) +
   scale_fill_manual(values = pop_color) +
   scale_y_continuous(expand=c(0, 0)) +
@@ -856,7 +851,6 @@ oceania_p <- oceania_init +
   labs(fill="K") +
   guides(fill="none")
 
-oceania_p
 
 # AFRICA (K=4)
 q <- read.table("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_africa_0.01_maf_pruned.K4r2.Q")
@@ -868,7 +862,7 @@ colnames(m) <- c("famid", "sampleid", "pat", "mat", "sex", "phenotype")
 l_df <- cbind(q, m[,c(1,2)])
 colnames(l_df) <- c(seq(1:k), 'pop', 'id')
 l_df <- l_df %>% drop_na(pop)
-gath_L_df <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
+africa <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
 
 # order populations using metadata region and country
 metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
@@ -886,9 +880,7 @@ pop_order <- unique(metadata$pop_code)
 # define however many colours there are for K value
 pop_color <- c("darkgreen", "lightseagreen", "green", "khaki4")
 
-africa_init <- ggplot(data=gath_L_df, aes(x=reorder(id, value, function(x){max(x)}), y=value,
-                                        fill=reorder(K, sort(as.integer(K)))))
-africa_p <- africa_init +
+africa_init <- ggplot(data=africa, aes(x=reorder(id, value, function(x){max(x)}), y=value, fill=reorder(K, sort(as.integer(K))))) +
   geom_bar(stat="identity", width=1) +
   scale_fill_manual(values = pop_color) +
   scale_y_continuous(expand=c(0, 0)) +
@@ -910,7 +902,6 @@ africa_p <- africa_init +
   labs(fill="K") +
   guides(fill="none")
 
-africa_p
 
 save.image("regional_admixture_plots.RData")
 ```
