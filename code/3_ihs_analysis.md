@@ -816,42 +816,39 @@ pops_to_plot <- c("AET", "PHP", "ADV", "SHL", "BCH", "CBU", "TWA", "KIG", "SAN",
 comps_to_plot <- c("VIP", "metabolic", "endocrine")
 df_meta_subset <- df_meta_full %>% filter(pop %in% pops_to_plot) %>% filter(test_group %in% comps_to_plot) %>% filter(Percentile != 99.5)
 
+df_meta_subset$sig_subs <- paste(df_meta_subset$subsistence, df_meta_subset$significant)
+df_meta_subset$subsistence <- factor(df_meta_subset$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
 
-plot_A <- ggplot(df_meta_subset,
-       aes(x = Percentile,
-           y = Enrichment_ratio,
-           group = interaction(pop, test_group),
-           color = subsistence,
-           linetype = test_group)) +
-  geom_line(size = 0.6) +
-  geom_point(aes(fill = significant), size = 2, shape = 21, stroke = 0.3, show.legend = FALSE) +
-  geom_hline(yintercept = 1, linetype = "solid", color = "black") +
+plot_A <- ggplot(df_meta_subset, aes(x = Percentile, y = Enrichment_ratio,
+           group = interaction(pop, test_group), linetype = test_group,
+           shape = sig_subs, fill = sig_subs, color = subsistence)) +
+  geom_hline(yintercept = 1, linetype = 2, color = "black") +
+  geom_point(size = 2) +
+  geom_line(linewidth = 0.5) +
   facet_wrap(~ region, scales = "fixed", nrow = 1) +
   scale_color_manual(values = c(
     "Hunter-gatherer" = "#C11C84",
     "Agriculturalist" = "#FDAE61",
     "Pastoralist" = "#40E0D0")) +
-  scale_fill_manual(values = c("TRUE" = "black", "FALSE" = "white")) +
+  scale_shape_manual(values = c(6, 25, 1, 21, 0, 22)) +
+  scale_fill_manual(values = c("white", "#FDAE61", "white", "#C11C84", "white", "#40E0D0")) +
   scale_linetype_manual(values = c(
     "VIP" = "solid",
     "metabolic" = "longdash",
     "endocrine" = "dotted")) +
-  labs(x = "iHS Percentile",
+  labs(x = "iHS percentile",
        y = "Enrichment Ratio",
        color = "Subsistence",
-       linetype = "Test Group") +
-  theme_minimal() +
+       linetype = "Gene set") +
+  theme_classic(base_size = 7) +
   theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
-    axis.line = element_line(color = "black"),
-    axis.ticks = element_line(color = "black"),
-    legend.position = "bottom",
-    legend.key.width = unit(2, "cm"),
-    strip.text = element_text(size = 8, face = "bold")
+    legend.position = "top",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.margin = margin(t = 5, r = 20, b = 5, l = 16)
   ) +
-  guides(color = guide_legend(override.aes = list(shape = NA)))
+  guides(shape = "none", fill = "none", 
+         color = guide_legend(override.aes = list(color = c("#FDAE61", "#C11C84", "#40E0D0"), fill = c("#FDAE61", "#C11C84", "#40E0D0"), shape = c(25, 21, 22))))
 
 ggsave("Fig2A_broad_enrichment_curbes_by_region.pdf", plot = plot_A, width = 11, height = 3.5, units = "in", device = cairo_pdf)
 #####---------------------------------------------
@@ -929,50 +926,31 @@ subplot$p_stars <- cut(subplot$chisq_pval,
 subplot <- subplot %>%
   mutate(SigFlag = chisq_pval < 0.05)
 
-# Finally plot lol
-plot_B <- ggplot(subplot, aes(x = OR, y = pop, color = subsistence)) +
-  # Error bars with alpha by significance
-  geom_errorbarh(
-    aes(xmin = CI_lower, xmax = CI_upper, alpha = SigFlag),
-    height = 0.5, linewidth = 0.3
-  ) +
-  # Points with alpha by significance
-  geom_point(
-    aes(alpha = SigFlag, fill = subsistence),
-    size = 1.7, shape = 21, stroke = 0.7
-  ) +
-  # Significance asterisks
-  geom_text(
-    aes(label = p_stars),
-    nudge_y = 0.3, size = 2.5, color = "black"
-  ) +
+metabolic_subplot$subsistence <- factor(metabolic_subplot$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
+metabolic_subplot$pop <- factor(metabolic_subplot$pop, 
+                                levels = arrange(metabolic_subplot, subsistence, pop)$pop %>% unique() %>% rev())
+
+plot_B <- ggplot(metabolic_subplot, aes(x = OR, y = pop, color = subsistence, fill = subsistence, shape = subsistence)) +
+  geom_errorbar(aes(xmin = CI_lower, xmax = CI_upper, alpha = SigFlag), width = 0.4, linewidth = 0.5) +
+  geom_point(aes(alpha = SigFlag), size = 2, show.legend = F) +
+  geom_text(aes(label = p_stars), nudge_y = 0.1, size = 3, color = "black") +
   geom_vline(xintercept = 1, linetype = "dashed", color = "black") +
   facet_wrap(~ test_group, scales = "free_x", nrow = 1,
              labeller = labeller(test_group = test_group_labels)) +
-  scale_color_manual(values = c(
+  scale_discrete_manual(c("color", "fill"), values = c(
     "Hunter-gatherer" = "#C11C84",
     "Agriculturalist" = "#FDAE61",
     "Pastoralist" = "#40E0D0"
   )) +
-  scale_fill_manual(values = c(
-    "Hunter-gatherer" = "#C11C84",
-    "Agriculturalist" = "#FDAE61",
-    "Pastoralist" = "#40E0D0"
-  )) +
-  scale_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.3), guide = "none") +
-  labs(x = "Odds Ratio", y = NULL, color = "Subsistence", fill = "Subsistence") +
-  scale_x_continuous(expand = expansion(mult = c(0.1, 0.05))) +
-  theme_minimal() +
+  scale_shape_manual(values = c(25, 21, 22)) +
+  scale_alpha_manual(values = c(0.3, 1), guide = "none") +
+  labs(x = "Odds ratio (enrichment of genes with extreme iHS scores)", y = NULL) +
+  theme_classic(base_size = 7) +
   theme(
-    text = element_text(family = "Arial"),
-    panel.grid.major.y = element_blank(),
-    axis.text = element_text(size = 9),
-    strip.background = element_rect(fill = "grey80", color = "grey90"),
-    strip.text = element_text(color = "black", face = "bold",
-                              margin = margin(t = 0.5, b = 0.5, l = 4, r = 4)),
-    panel.spacing = unit(0.8, "lines"),
-    panel.border = element_rect(color = "grey80", fill = NA, linewidth = 0.8),
-    legend.position = "top"
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    plot.margin = margin(t = 5, r = 20, b = 5, l = 16),
+    legend.position = "none"
   )
 
 ggsave("Fig2B_subcat_ORs_by_pop.pdf", plot = plot_B, width = 9, height = 5, units = "in", device = cairo_pdf)
