@@ -1161,8 +1161,11 @@ p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence,
     breaks = seq(0, 35000, by = 5000),  # adjust tick spacing as desired
     labels = scales::comma_format()
   ) +
-  scale_color_manual(values = subsistence_colors) +
-  facet_wrap(~ region, scales = "free_y", ncol = 4) +
+  scale_color_manual(values = c(
+    "Hunter-gatherer" = "#C11C84",
+    "Agriculturalist" = "#FDAE61",
+    "Pastoralist" = "#40E0D0")) +
+  facet_wrap(~ region, ncol = 4, axes = "all_x") +
   labs(
     x = "Years before present",
     y = expression(paste("Effective population size ", (N[e]))),
@@ -1173,8 +1176,12 @@ p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence,
     strip.background = element_blank(),
     strip.text = element_text(face = "bold"),
     legend.position = "top",
-    plot.margin = margin(t = 5, r = 20, b = 5, l = 5)
+    plot.margin = margin(t = 5, r = 20, b = 5, l = 5), 
+    panel.spacing = unit(0.5, "cm")
   )
+
+fwrite(alldfs, "fig_2a_source.csv")
+saveRDS(p, "fig_2a.rds")
 
 
 #############################################
@@ -1341,6 +1348,14 @@ roh_merged_subset <- roh_merged_subset %>%
   mutate(region = factor(region, levels = region_order))
 
 # Plot Fig 2b
+annot_df <- data.frame(
+  region = unique(roh_merged_subset$region),
+  xmin = c(1, 1, 0, 1, 1, 1, 1, 0),
+  xmax = c(2, 2, 0, 2, 2, 2, 2, 0),
+  y_position = c(400, 450, 0, 150, 250, 350, 300, 0),
+  annotations = c("**", "***", "", "***", "***", "***", "***", "")
+)
+
 plot2b_v2 <- ggplot(roh_merged_subset, aes(x = pop_code, y = ROH_MB, fill = subsistence)) +
   geom_boxplot(
     outlier.shape = NA,
@@ -1367,10 +1382,19 @@ plot2b_v2 <- ggplot(roh_merged_subset, aes(x = pop_code, y = ROH_MB, fill = subs
     legend.position = "none",
     strip.background = element_blank(),
     strip.text = element_text(face = "bold"),
-    plot.margin = margin(t = 5, r = 20, b = 5, l = 5)
+    plot.margin = margin(t = 5, r = 20, b = 5, l = 16),
+    panel.spacing = unit(0.5, "cm")
   )
 
-ggsave("Fig_2B_ROH_total_length_only.pdf",plot = plot2b_v2,width = 8, height = 4)
+fwrite(roh_merged_subset, "fig_2b_source.csv")
+saveRDS(plot2b_v2, "fig_2b.rds")
+
+# Arrange Fig 2
+p2a <- readRDS("fig_2a.rds")
+p2b <- readRDS("fig_2b.rds")
+
+p2 <- plot_grid(p2a, p2b, labels = c("a", "b"), nrow = 2)
+save_plot("Fig2.pdf", p2, base_width = 7, base_height = 7)
 
 
 # Compute p-value to measure significance in subsistence-based ROH difference
@@ -1487,70 +1511,6 @@ plot_supp_roh <- ggplot(roh_merged, aes(x = pop_code, y = ROH_MB, fill = subsist
   )
 
 ggsave("Supp_Fig_ROH_total_length_only_all_pops.pdf", plot = plot_supp_roh, width = 11, height = 7)
-
-
-#############################
-####    FIG 2 LEGENDS    ####
-#############################
-library(patchwork)
-
-subsistence_colors <- c(
-  "Hunter-gatherer" = "#C11C84",
-  "Agriculturalist" = "#FDAE61",
-  "Pastoralist" = "#40E0D0"
-)
-
-# Region dummy dataframe
-region_order <- c(
-  "East Asia", "Southeast Asia", "South Asia", "Oceania",
-  "East Africa", "Southern Africa", "East Central Africa", "West Central Africa"
-)
-
-region_legend_df <- data.frame(
-  region = factor(names(region_colors), levels = names(region_colors)),
-  x = 1:length(region_colors),
-  y = 1
-)
-region_legend_df <- data.frame(
-  region = factor(region_order, levels = region_order),
-  x = 1:length(region_order),
-  y = 1
-)
-
-# Subsistence dummy dataframe
-subsistence_legend_df <- data.frame(
-  subsistence = factor(names(subsistence_colors), levels = names(subsistence_colors)),
-  x = 1:length(subsistence_colors),
-  y = 1
-)
-
-p_region_legend <- ggplot(region_legend_df, aes(x = factor(x), y = 1, fill = region)) +
-  geom_tile(color = "black", width = 0.9, height = 0.9) +
-  scale_fill_manual(values = region_colors, breaks = region_order) +
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 7),
-    legend.key.size = unit(0.7, "cm")
-  ) +
-  guides(fill = guide_legend(nrow = 2, byrow = TRUE))
-
-ggsave("Fig_2_region_legend.pdf",plot = p_region_legend, width = 6, height = 5)
-
-p_subsistence_legend <- ggplot(subsistence_legend_df, aes(x = factor(x), y = 1, fill = subsistence)) +
-  geom_tile(color = "black", width = 0.9, height = 0.9) +
-  scale_fill_manual(values = subsistence_colors) +
-  theme_void() +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 7),
-    legend.key.size = unit(0.7, "cm")
-  ) +
-  guides(fill = guide_legend(nrow = 1, byrow = TRUE))
-
-ggsave("Fig_2_subsistence_legend.pdf",plot = p_subsistence_legend, width = 6, height = 5)
 
 
 save.image("roh_figure.RData")
