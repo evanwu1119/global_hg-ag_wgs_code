@@ -688,7 +688,7 @@ save.image("endocrine_enrichment_iHS.RData")
 
 **Step 4) Plot the enrichment of extreme iHS in VIPs, metabolic, and endocrine genes to create Figure 3 and Supplementary Table 3.**
 
-`VIP_endocrine_enrichment_comps.R` → `all_subcat_level_enrichments_95th_percentile_for_supplement.csv`
+`VIP_metabolic_endocrine_enrichment_comps.R` → `all_subcat_level_enrichments_95th_percentile_for_supplement.csv`
 
 ```r
 ## ------------------------------------------------------------------
@@ -1027,7 +1027,7 @@ chisq_enrichments_95th_for_supp <- df_meta_full %>% filter(Percentile == 95.0) %
 write.csv(chisq_enrichments_95th_for_supp, "all_subcat_level_enrichments_95th_percentile_for_supplement.csv",
           row.names = FALSE, quote = TRUE)
 
-save.image("VIP_endocrine_enrichment_comps.RData")
+save.image("VIP_metabolic_endocrine_enrichment_comps.RData")
 ```
 
 **Step 5) Plot the proportion of VIPs with a non-synonymous SNP that has iHS > 0.95% out of all other VIPs to create Supplementary Figure 6.**
