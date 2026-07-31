@@ -707,6 +707,7 @@ save.image("endocrine_enrichment_iHS.RData")
 library(dplyr)
 library(ggplot2)
 library(data.table)
+library(cowplot)
 
 setwd("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/new_iHS")
 
@@ -954,6 +955,9 @@ plot_B <- ggplot(metabolic_subplot, aes(x = OR, y = pop, color = subsistence, fi
   )
 
 ggsave("Fig2B_subcat_ORs_by_pop.pdf", plot = plot_B, width = 9, height = 5, units = "in", device = cairo_pdf)
+
+p3 <- plot_grid(plot_A, plot_B, labels = c("a", "b"), nrow = 2, rel_heights = c(0.5, 1))
+save_plot("final/Fig3.pdf", p3, base_width = 7, base_height = 6)
 
 # Get ORs and CI ranges for paper
 
