@@ -1154,10 +1154,10 @@ subsistence_colors <- c(
 
 
 p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence, group = pop)) +
-  geom_step(size = 0.4, alpha = 0.8) +
-  scale_x_log10(labels = scales::scientific, expand = c(0, 0)) +
+  geom_step(size = 0.5, alpha = 0.7, key_glyph = draw_key_rect) +
+  scale_x_log10(labels = scales::scientific, expand = c(0, 0), limits = c(5e3, 1e7)) +
   scale_y_continuous(
-    limits = c(min(alldfs$lambda), max(alldfs$lambda)),
+    limits = c(0, 35000),
     breaks = seq(0, 35000, by = 5000),  # adjust tick spacing as desired
     labels = scales::comma_format()
   ) +
@@ -1165,20 +1165,14 @@ p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence,
   facet_wrap(~ region, scales = "free_y", ncol = 4) +
   labs(
     x = "Years before present",
-    y = "Effective population size (Ne)"
+    y = expression(paste("Effective population size ", (N[e]))),
+    color = "Subsistence"
   ) +
-  theme_cowplot(font_size = 9) +
+  theme_classic(base_size = 7) +
   theme(
-    strip.background = element_rect(fill = "grey90", color = NA),
-    strip.text = element_text(size = 8, face = "bold"),
-    axis.text = element_text(size = 7),
-    axis.title = element_text(size = 8),
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 7),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    legend.position = "top",
     plot.margin = margin(t = 5, r = 20, b = 5, l = 5)
   )
 
@@ -1195,36 +1189,26 @@ recentdfs <- alldfs %>%
     right_time_boundary <= 100000
   )
 
-q <- ggplot(recentdfs, aes(x = left_time_boundary, y = lambda, color = subsistence, group = pop)) +
-  geom_step(size = 0.4, alpha = 0.8) +
-  scale_x_log10(
-    limits = c(3000, 100000),
-    labels = scales::scientific,
-    expand = c(0, 0)
-  ) +
+p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence, group = pop)) +
+  geom_step(size = 0.5, alpha = 0.7, key_glyph = draw_key_rect) +
+  scale_x_log10(labels = scales::scientific, expand = c(0, 0), limits = c(5e3, 1e7)) +
   scale_y_continuous(
-    limits = c(min(recentdfs$lambda, na.rm = TRUE),
-               max(recentdfs$lambda, na.rm = TRUE)),
+    limits = c(0, 35000),
+    breaks = seq(0, 35000, by = 5000),  # adjust tick spacing as desired
     labels = scales::comma_format()
   ) +
   scale_color_manual(values = subsistence_colors) +
-  facet_wrap(~ region, scales = "free_y", ncol = 4) +
+  facet_wrap(~ region, ncol = 4, axes = "all_x") +
   labs(
     x = "Years before present",
-    y = "Effective population size (Ne)"
+    y = expression(paste("Effective population size ", (N[e]))),
+    color = "Subsistence"
   ) +
-  theme_cowplot(font_size = 9) +
+  theme_classic(base_size = 7) +
   theme(
-    strip.background = element_rect(fill = "grey90", color = NA),
-    strip.text = element_text(size = 8, face = "bold"),
-    axis.text = element_text(size = 7),
-    axis.title = element_text(size = 8),
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    legend.text = element_text(size = 7),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
+    legend.position = "top",
     plot.margin = margin(t = 5, r = 20, b = 5, l = 5)
   )
 
@@ -1362,32 +1346,27 @@ plot2b_v2 <- ggplot(roh_merged_subset, aes(x = pop_code, y = ROH_MB, fill = subs
     outlier.shape = NA,
     lwd = 0.2,
     width = 0.5,
-    alpha = 0.3
+    alpha = 0.7
   ) +
-  ggbeeswarm::geom_beeswarm(
+  geom_beeswarm(
     aes(color = subsistence),
-    size = 0.1,
+    size = 0.5,
     priority = "density"
   ) +
+  geom_signif(data = annot_df, aes(xmin = xmin, xmax = xmax, y_position = y_position, annotations = annotations), manual = T, inherit.aes = F) +
   facet_wrap(~ region, scales = "free_x", ncol = 4) +
-  scale_y_continuous(labels = scales::label_number(accuracy = 10)) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 10), limits = c(0, 500)) +
   scale_fill_manual(values = subsistence_colors) +
   scale_color_manual(values = subsistence_colors) +
   labs(
-    y = "Total ROH Length (MB)"
+    x = "Population",
+    y = "Total ROH Length (Mbp)"
   ) +
-  theme_cowplot(font_size = 9) +
+  theme_classic(base_size = 7) +
   theme(
-    axis.text.x = element_text(size = 7),
-    axis.text.y = element_text(size = 7),
-    axis.title.x = element_text(size = 8),
-    axis.title.y = element_text(size = 8),
-    strip.background = element_rect(fill = "grey90", color = NA),
-    strip.text = element_text(size = 8, face = "bold"),
     legend.position = "none",
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_rect(color = "black", fill = NA, size = 0.4),
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold"),
     plot.margin = margin(t = 5, r = 20, b = 5, l = 5)
   )
 
