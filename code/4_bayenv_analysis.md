@@ -983,7 +983,6 @@ bayenv_outlier$region <- factor(bayenv_outlier$region, levels = c("West Central 
 
 # Select the 4 SNPs we want to plot
 top4 <- bayenv_outlier %>% filter(pos %in% c("59920004", "31210215", "33061192", "40939460"))
-hla <- bayenv_outlier %>% filter(grepl("HLA", gene))
 
 top4$chr_pos <- rep(
   c("rs1385812 3:59920004 intronic FHIT",
@@ -992,7 +991,6 @@ top4$chr_pos <- rep(
     "rs9916754 17:40939460 exonic WNK4"), each = 27
 )
 
-pdf(paste0(wd, "figures/panel_5b.pdf"), height = 4, width = 2.88)
 snp_af_plot <- top4 %>%
   filter(region != "Oceania" & region != "East Asia"
          & group_mean != 0 & group_mean != 1
