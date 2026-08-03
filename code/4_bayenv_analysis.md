@@ -715,7 +715,7 @@ logistic_enrich <- run_logistic_regression(enrich_data, uniq_annots) %>% as.data
 saveRDS(logistic_enrich, file = "data/logistic_enrich.rds")
 ```
 
-**Step 6) Look for enrichment of SNPs putatively under selection from ancient Eurasian DNA in Bayenv significant SNPs. The annotation of SNPs is in `Selection_Summary_Statistics_01OCT2025.tsv.gz`.**
+**Step 6) Look for enrichment of SNPs putatively under selection from ancient Eurasian DNA in Bayenv significant SNPs from [Akbari et al](https://www.nature.com/articles/s41586-026-10358-1). The annotation of SNPs is in `Selection_Summary_Statistics_01OCT2025.tsv.gz`.**
 
 `bayenv_analysis.Rmd {akbari snps enrich}` → `akbari_enrich_list.rds` and `figs8d_akbari.rds`
 
