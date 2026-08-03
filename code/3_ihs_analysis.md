@@ -276,7 +276,16 @@ library(ggplot2)
 ## ------------------------------------------------------------------
 setwd("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/new_iHS")
 load("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/new_iHS/new_iHS_per_gene_all_pops_lowconf_anc_annot_BCpipeline_gff3_df.RData")
-subcat_annot <- readRDS("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/fst/ihs/data/sub_ensg.rds")
+
+# Get genes from 11 subcategories of all metabolic genes
+metabolic_sub <- list.files(path = "/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/curate_genes/KEGG_09100_Metabolism/", pattern = "ALLGENES", full.names = T) %>% grep(pattern = "09100_METABOLISM", value = T, invert = T)
+metabolic_sub_list <- lapply(metabolic_sub, function(x) sapply(unique(fread(x, header = F)$V2), function(y) strsplit(y, ":")[[1]][2]))
+names(metabolic_sub_list) <- str_sub(basename(metabolic_sub), 7, -14)
+ensembl = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+metabolic_sub_ensg <- lapply(metabolic_sub_list, function(x) getBM(attributes = c('ensembl_gene_id', 'hgnc_symbol', 'entrezgene_id'), filters = 'entrezgene_id', values = x, mart = ensembl))
+saveRDS(metabolic_sub_ensg, paste0(wd, "data/metabolic_sub_ensg.rds"))
+
+subcat_annot <- readRDS("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/evan/fst/ihs/data/metabolic_sub_ensg.rds")
 
 ## ------------------------------------------------------------------
 ##  2. Data cleaning
