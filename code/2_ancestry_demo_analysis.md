@@ -6,41 +6,156 @@ This page details the code needed to generate PCA, ADMIXTURE, MSMC2, and ROH res
 
 **Step 1) Create map of sampling locations for all populations to create Figure 1a.**
 
-```r
-######################
-####    READ ME   ####
-######################
-# Generating figure for dist. study pops worldwide
+`world_map.R` → `fig_1a.rds`
 
-library("tidyverse")
-library("ggplot2")
-library("sf")
-library("rnaturalearth")
-library("rnaturalearthdata")
-theme_set(theme_bw())
+```r
+library(tidyverse)
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+# Load in and/or fill lat/long data
+metadata <- fread("freeze2_metadata_v3.txt")
+metadata <- unique(select(metadata, "pop_code", "region", "country", "subsistence", "latitude", "longitude"))
+metadata <- metadata[!duplicated(metadata$pop_code),]
+
+add_coord <- data.frame(
+  pop_code = c("ADV", "SHL", 
+               "ATY", "PAI", 
+               "VAN", "PNG", 
+               "SAN",
+               "AET", "AGT", "ATI",
+               "PHP", "RAM",
+               "KIG", "TWA",
+               # Adjust overlapping points
+               "BCH", "SHK",
+               "MNO"),
+  latitude = c(8.3, 6.9, 
+               25, 22, 
+               -17.6, -6,
+               -26,
+               14.6, 17.1, 11.2,
+               10.3, -8.5,
+               -1.28, -0.8,
+               6.01, 6.05,
+               8.27),
+  longitude = c(81.3, 80,
+                121, 121, 
+                168.3, 143.4, 
+                20.3,
+                120.5, 122.2, 122.3,
+                123.8, 120.4,
+                29.7, 19.7,
+                36.58, 35.54,
+                125.58)
+)
+
+metadata$latitude[match(add_coord$pop_code, metadata$pop_code)] <- add_coord$latitude
+metadata$longitude[match(add_coord$pop_code, metadata$pop_code)] <- add_coord$longitude
+
+# Set colors
+colours_for_pop <- c("AET" = "firebrick1", "AGT" = "firebrick4", "ATI" = "brown1", "PHP" = "coral", "RAM" = "darkred",
+                     "KWI" = "orangered2", "MWA" = "deeppink", "MNO" = "indianred1", "MTW" = "indianred3", "SMB" = "maroon",
+                     "ADV" = "chocolate1", "SHL" = "sienna4", "ATY" = "magenta", "PAI" = "orchid",
+                     "PNG" = "slateblue2", "VAN" = "lightblue2", "POL" = "mediumblue", "SCI" = "skyblue4", "SLI" = "navy",
+                     "BCH" = "mediumturquoise", "CBU" = "darkgreen", "SHK" = "darkseagreen",
+                     "KIG" = "lemonchiffon3", "TWA" = "green",
+                     "HMB" = "olivedrab3", "NAM" = "mediumaquamarine", "SAN" = "lightseagreen",
+                     "BAK" = "turquoise4", "FAN" = "yellowgreen", "GAL" = "palegreen4",
+                     "KOT" = "palegreen", "NZE" = "olivedrab1", "TEK" = "mediumspringgreen", "TSO" = "khaki4")
 
 # 1. Base world map of relevant regions
-
+metadata<- fread("final/fig_1a_source.csv")
 world <- ne_countries(scale = "medium", returnclass = "sf")
-class(world)
 
 include_subregions <- c("Southern Africa","Southern Asia","Western Africa","Eastern Africa","Middle Africa","Northern Africa","Western Asia", 
                         "South-Eastern Asia", "Central Asia", "Eastern Asia", "Melanesia", "Micronesia", "Polynesia")
-world_map <- world %>% 
-  filter(subregion %in% include_subregions) %>% 
-  ggplot() +
-  geom_sf(fill = "gray95", color = "gray20") +
-  coord_sf(crs = "+proj=laea +lat_0=45 +lon_0=90 +x_0=90000 +y_0=100000 +ellps=GRS80 +units=m +no_defs") +
-  theme(
-    axis.text = element_text(size = 6))
+subregions <- filter(world, subregion %in% include_subregions)
+
+# Set up country-level annotations for 
+gabon <- filter(world, name == "Gabon")
+philippines <- filter(world, name == "Philippines")
+
+gab_zoom <- ggplot(gabon) +
+  geom_sf(fill = "gray95", color = "black") +
+  coord_sf() +
+  geom_point(data = filter(metadata, country == "Gabon"),
+             aes(x = longitude, y = latitude, color = pop_code, fill = pop_code, shape = subsistence),
+             size = 1, alpha = 0.7, show.legend = F) +
+  scale_shape_manual(values = c(21, 25, 22)) +
+  scale_discrete_manual(c("color", "fill"), values = colours_for_pop) +
+  theme_classic(base_size = 7) +
+  theme(axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank(),        
+        plot.margin = margin(0,0,0,0),
+        panel.border = element_rect(color = "black"))
+gab_grob <- ggplotGrob(gab_zoom)
+
+phl_zoom <- ggplot(philippines) +
+  geom_sf(fill = "gray95", color = "black") +
+  coord_sf() +
+  geom_point(data = filter(metadata, country == "Philippines"),
+             aes(x = longitude, y = latitude, color = pop_code, fill = pop_code, shape = subsistence),
+             size = 1, alpha = 0.7, show.legend = F) +
+  scale_shape_manual(values = c(21, 25, 22)) +
+  scale_discrete_manual(c("color", "fill"), values = colours_for_pop) +
+  theme_classic(base_size = 7) +
+  theme(axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        plot.margin = margin(0,0,0,0),
+        panel.background = element_rect(color = "black"))
+phl_grob <- ggplotGrob(phl_zoom)
+
+# Combine all plots, inset coords = (xmin, xmax, ymin, ymax)
+gab_anno <- c(62, 90, -35, -5)
+gab_rect <- c(8.5, 15, -3, 3.5)
+phl_anno <- c(150, 175, 10, 52)
+phl_rect <- c(119, 127, 6.5, 18.5)
+
+world_map <-  ggplot(subregions) +
+  geom_sf(fill = "gray95", color = "black") +
+  coord_sf(xlim = c(-15, 180)) +
+  geom_point(data = na.omit(metadata), 
+             aes(x = longitude, y = latitude, color = pop_code, fill = pop_code, shape = subsistence),
+             size = 1, alpha = 0.7, show.legend = F) +
+  # Add gabon and zoom
+  annotation_custom(gab_grob, 
+                    xmin = gab_anno[1], xmax = gab_anno[2], 
+                    ymin = gab_anno[3], ymax = gab_anno[4]) +
+  geom_rect(aes(xmin = gab_rect[1], xmax = gab_rect[2], 
+                ymin = gab_rect[3], ymax = gab_rect[4]), 
+            data = . %>% slice_head(n = 1), inherit.aes = F,
+            color = "black", alpha = 0) +
+  geom_path(data = data.frame(
+    x = c(gab_anno[1], gab_rect[1], gab_anno[2], gab_rect[2]), 
+    y = c(gab_anno[3], gab_rect[3], gab_anno[4], gab_rect[4]),
+      grp = c(1, 1, 2, 2)), inherit.aes = F,
+      aes(x, y, group = grp), color = "black", linetype = 2) +
+  # Add philippines and zoom
+  annotation_custom(phl_grob,
+                    xmin = phl_anno[1], xmax = phl_anno[2], 
+                    ymin = phl_anno[3], ymax = phl_anno[4]) +
+  geom_rect(aes(xmin = phl_rect[1], xmax = phl_rect[2], 
+                ymin = phl_rect[3], ymax = phl_rect[4]), 
+            data = . %>% slice_head(n = 1), inherit.aes = F,
+            color = "black", alpha = 0) +
+  geom_path(data = data.frame(
+    x = c(phl_anno[2], phl_rect[2], phl_anno[1], phl_rect[1]), 
+    y = c(phl_anno[3], phl_rect[3], phl_anno[4], phl_rect[4]),
+      grp = c(1, 1, 2, 2)), inherit.aes = F,
+      aes(x, y, group = grp), color = "black", linetype = 2) +
+  labs(x = "Longitude", y = "Latitude") +
+  scale_shape_manual(values = c(21, 25, 22)) +
+  scale_discrete_manual(c("color", "fill"), values = colours_for_pop) +
+  theme_classic(base_size = 7) +
+  theme(panel.grid.major = element_line(color = "lightgrey"))
 
 world_map
-
-ggsave(filename = "world_map.pdf",
-       plot = world_map,
-       width = 4,       
-       height = 3,      
-       units = "in")
+fwrite(metadata, "final/fig_1a_source.csv")
+saveRDS(world_map, "final/fig_1a.rds")
 ```
 
 ## Global and continental PCA
@@ -95,7 +210,7 @@ done
 
 **Step 4) Plot global PCA to create Figure 1b.**
 
-`freeze2_global_pca.R`
+`freeze2_global_pca.R` → `fig_1b.rds`
 
 ```r
 #######################
@@ -134,7 +249,7 @@ colnames(eigenval) <- paste0("eigenval")
 pve <- (eigenval/sum(eigenval)) * 100
 pve <- round(pve, 2)
 
-meta <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
+meta <- read.delim("freeze2_metadata_v3.txt")
 
 # define colours in the region
 region_colors <- c(
@@ -163,8 +278,8 @@ names(subsistence_shape) <- unique(pca_dat$subsistence)
 
 # define label colors
 labs <- filter(pca_dat, !duplicated(pca_dat$region)) %>% select(region)
-rgbs <- col2rgb(region_colors[labs$region])
-labs$txt_color <- apply(rgbs, 2, function(x) {
+rgab_annos <- col2rgab_anno(region_colors[labs$region])
+labs$txt_color <- apply(rgab_annos, 2, function(x) {
   as.character(x[1] * 0.299 + x[2] * 0.587 + x[3] * 0.114 <= 150)
 })
 labs$rtxt <- as.character(labs$region)
@@ -194,16 +309,18 @@ main_pc_plot <- pca_dat %>%
   new_scale_color() +
   geom_label(aes(x = x, y = y, label = rtxt, color = txt_color), data = labs,
              size = 5, size.unit = "pt", linewidth = 0) +
-  labs(x = NULL, y = NULL) +
+  labs(x = paste0("PC1 (", pve[1,], "%)"), y = paste0("PC2 (", pve[2,], "%)")) +
   scale_color_manual(values = c("FALSE" = "black", "TRUE" = "white")) +
   theme_classic(base_size = 7) +
   theme(legend.position = "none") +
-  labs(x = paste0("PC1 (", pve[1,], "%)"), y = paste0("PC2 (", pve[2,], "%)"))
+  
+fwrite(pca_dat, "final/fig_1b_source.csv")
+saveRDS(main_pc_plot, "final/fig_1b.rds")
 ```
 
 **Step 5) Plot continental PCAs to create Figure 1c.**
 
-`freeze2_regional_pcas.R`
+`freeze2_regional_pcas.R` → `fig_1c.rds`
 
 ```r
 #######################
@@ -224,7 +341,7 @@ metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/
 # SHARED VARIABLES
 shapes_for_subsistence <- c("Hunter-gatherer" = 25,
                             "Agriculturalist" = 21,
-                            "Pastoralist" = 23)
+                            "Pastoralist" = 22)
 
 # define colours for population
 colours_for_pop <- c("AET" = "firebrick1", "AGT" = "firebrick4", "ATI" = "brown1", "PHP" = "coral", "RAM" = "darkred",
@@ -249,7 +366,7 @@ eigenvec <- eigenvec[order(eigenvec$sample_name),]
 eigenval <- scan("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_oceania_0.01_maf.eigenval")
 
 # calculate percent variance explained
-pve <- (eigenval/sum(eigenval)) * 100
+tmp <- (eigenval/sum(eigenval)) * 100
 pve <- round(eigenval, 2)
 
 # merge with imported metadata
@@ -264,23 +381,6 @@ oceania <- oceania %>%
   ) %>% arrange(subsistence, population_code)
 
 
-oceania_plot <- ggplot(filter(all_conts, cont == "Oceania"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
-  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
-  scale_shape_manual(values = shapes_for_subsistence) +
-  scale_color_manual(values = colours_for_pop) +
-  scale_fill_manual(values = colours_for_pop) +
-  labs(x = paste0("PC1 (", pve[1], "%)"),
-       y = paste0("PC2 (", pve[2], "%)"),
-       color = NULL, shape = NULL, fill = NULL) +
-  theme_classic(base_size = 7) +
-  facet_wrap(~ cont) +
-  theme(
-    legend.position = "none",
-    strip.background = element_blank(),
-    strip.text = element_text(face = "bold")
-  )
-
-
 ######################
 ####     ASIA     ####
 ######################
@@ -293,8 +393,8 @@ eigenvec <- eigenvec[order(eigenvec$sample_name),]
 eigenval <- scan("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_asia_0.01_maf.eigenval")
 
 # calculate percent variance explained
-pve <- (eigenval/sum(eigenval)) * 100
-pve <- round(eigenval, 2)
+tmp <- (eigenval/sum(eigenval)) * 100
+pve <- c(pve, round(eigenval, 2))
 
 # merge with imported metadata
 asia <- merge(eigenvec, metadata, by.x = "sample_name", by.y = "study_ID", all.x = TRUE)
@@ -306,23 +406,6 @@ asia <- asia %>%
     subsistence = factor(subsistence), # Ensure regions are ordered
     cont = "Asia"
   ) %>% arrange(subsistence, population_code)
-
-
-asia_plot <- ggplot(filter(all_conts, cont == "Asia"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
-  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
-  scale_shape_manual(values = shapes_for_subsistence) +
-  scale_color_manual(values = colours_for_pop) +
-  scale_fill_manual(values = colours_for_pop) +
-  labs(x = paste0("PC1 (", pve[1], "%)"),
-       y = paste0("PC2 (", pve[2], "%)"),
-       color = NULL, shape = NULL, fill = NULL) +
-  theme_classic(base_size = 7) +
-  facet_wrap(~ cont) +
-  theme(
-    legend.position = "none",
-    strip.background = element_blank(),
-    strip.text = element_text(face = "bold")
-  )
 
 
 ########################
@@ -337,8 +420,8 @@ eigenvec <- eigenvec[order(eigenvec$sample_name),]
 eigenval <- scan("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_africa_0.01_maf.eigenval")
 
 # calculate percent variance explained
-pve <- (eigenval/sum(eigenval)) * 100
-pve <- round(eigenval, 2)
+tmp <- (eigenval/sum(eigenval)) * 100
+pve <- c(pve, round(eigenval, 2))
 
 # merge with imported metadata
 africa <- merge(eigenvec, metadata, by.x = "sample_name", by.y = "study_ID", all.x = TRUE)
@@ -351,8 +434,36 @@ africa <- africa %>%
     cont = "Africa"
   ) %>% arrange(subsistence, population_code)
 
+######################################
+###   COMBINING THE 3 IN A PANEL   ###
+######################################
+library(cowplot)
+
+# Combine the plots side by side
+all_conts <- rbind(
+  select(africa, sample, PC_1, PC_2, pop_code, subsistence) %>% mutate(cont = "Africa"),
+  select(asia, sample, PC_1, PC_2, pop_code, subsistence) %>% mutate(cont = "Asia"),
+  select(oceania, sample, PC_1, PC_2, pop_code, subsistence) %>% mutate(cont = "Oceania")
+)
+pve <- c(8.21, 7.18, 6.92, 3.01, 16.85, 9.41)
 
 africa <- ggplot(filter(all_conts, cont == "Africa"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
+  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
+  scale_shape_manual(values = shapes_for_subsistence) +
+  scale_color_manual(values = colours_for_pop) +
+  scale_fill_manual(values = colours_for_pop) +
+  labs(x = paste0("PC1 (", pve[5], "%)"),
+       y = paste0("PC2 (", pve[6], "%)"),
+       color = NULL, shape = NULL, fill = NULL) +
+  theme_classic(base_size = 7) +
+  facet_wrap(~ cont) +
+  theme(
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold")
+  )
+
+asia <- ggplot(filter(all_conts, cont == "Asia"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
   geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
   scale_shape_manual(values = shapes_for_subsistence) +
   scale_color_manual(values = colours_for_pop) +
@@ -368,19 +479,27 @@ africa <- ggplot(filter(all_conts, cont == "Africa"), aes(PC_1, PC_2, color = po
     strip.text = element_text(face = "bold")
   )
 
+oceania <- ggplot(filter(all_conts, cont == "Oceania"), aes(PC_1, PC_2, color = pop_code, shape = subsistence, fill = pop_code)) +
+  geom_point(size = 1, alpha = 0.7) + # Adjust size if needed
+  scale_shape_manual(values = shapes_for_subsistence) +
+  scale_color_manual(values = colours_for_pop) +
+  scale_fill_manual(values = colours_for_pop) +
+  labs(x = paste0("PC1 (", pve[3], "%)"),
+       y = paste0("PC2 (", pve[4], "%)"),
+       color = NULL, shape = NULL, fill = NULL) +
+  theme_classic(base_size = 7) +
+  facet_wrap(~ cont) +
+  theme(
+    legend.position = "none",
+    strip.background = element_blank(),
+    strip.text = element_text(face = "bold")
+  )
 
-######################################
-###   COMBINING THE 3 IN A PANEL   ###
-######################################
-library(cowplot)
+composite <- plot_grid(asia, oceania, africa, ncol = 3, align = "v")
+composite
+fwrite(all_conts, "final/fig_1c_source.csv")
+saveRDS(composite, "final/fig_1c.rds")
 
-# Combine the plots side by side
-all_conts <- rbind(africa, asia, oceania)
-composite <- plot_grid(asia_plot, oceania_plot, africa_plot, ncol = 3, align = "v")
-
-out <- here("Fig1_PCA_plots")
-three_regions_pca_file <- here(out,"three_regions_pca_plot.pdf")
-ggsave(three_regions_pca_file, plot = composite, width = 7.8, height = 2.5, units = "in")
 
 save.image("freeze2_regional_pcas_v2.RData")
 ```
@@ -585,7 +704,7 @@ p2 <- pca_dat %>%
 
 plot <- plot_grid(p1, p2, ncol = 1, rel_heights = c(1.075, 1), labels = c("a", "b"))
 
-pdf("global_pca_v2.pdf", width = 7.5, height = 8)
+pdf("global_pca.pdf", width = 7.5, height = 8)
 print(plot)
 dev.off()
 
@@ -684,7 +803,7 @@ pong -m ${CONT}.multiplerun.Qfilemap -i ${CONT}.ind2pop -n ${CONT}.poporder.txt 
 
 **Step 6) Plot ADMIXTURE outputs for each continent manually to create Figure 1d.**
 
-`freeze2_admixture.R`
+`freeze2_admixture.R` → `fig_1d.rds`
 
 ```r
 #####################################
@@ -742,43 +861,6 @@ l_df <- l_df %>% drop_na(pop)
 asia <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
 asia <- asia %>% filter(pop != "ORR")
 
-# order populations using metadata region and country
-metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
-metadata <- merge(x = metadata, y = l_df, by.x = "study_ID", by.y = "id") # only retaining samples in l_df
-
-region_order <- c("East Asia", "Southeast Asia", "South Asia")
-
-# convert the region column to a factor with the custom order — you wont see the results just yet
-metadata$region <- factor(metadata$region, levels = region_order, ordered = TRUE)
-
-# sort the entire metadata frame now based on the custom order of the region column, then extract unique pop_code
-metadata <- metadata[order(metadata$region), ]
-pop_order <- unique(metadata$pop_code)
-
-# define however many colours there are for K value
-pop_color <- c("sienna4", "firebrick1", "orchid")
-
-asia_p <- ggplot(data=asia, aes(x=reorder(id, value, function(x){max(x)}), y=value, fill=reorder(K, sort(as.integer(K))))) +
-  geom_bar(stat="identity", width=1) +
-  scale_fill_manual(values = pop_color) +
-  scale_y_continuous(expand=c(0, 0)) +
-  scale_x_discrete(expand=c(-1, 0)) +
-  facet_grid(. ~ factor(pop, levels=pop_order), scales = "free", space="free", switch="both") +
-  theme_classic() +
-  theme(panel.spacing = unit(0.2, "lines"),
-        strip.background = element_rect(colour="white", fill="white"),
-        strip.text.x = element_text(size = 10, colour = "black", angle = 90, hjust = 0.8),
-        strip.placement = "outside",
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) +
-  theme(legend.position="bottom") +
-  ylab("") +
-  xlab("") +
-  labs(fill="K") +
-  guides(fill="none")
-
 
 # OCEANIA (K=2)
 q <- read.table("freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet_nokin_oceania_0.01_maf_pruned.K2r2.Q")
@@ -791,43 +873,6 @@ l_df <- cbind(q, m[,c(1,2)])
 colnames(l_df) <- c(seq(1:k), 'pop', 'id')
 l_df <- l_df %>% drop_na(pop)
 oceania <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
-
-# order populations using metadata region and country
-metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
-metadata <- merge(x = metadata, y = l_df, by.x = "study_ID", by.y = "id") # only retaining samples in l_df
-
-region_order <- c("Oceania")
-
-# convert the region column to a factor with the custom order — you wont see the results just yet
-metadata$region <- factor(metadata$region, levels = region_order, ordered = TRUE)
-
-# sort the entire metadata frame now based on the custom order of the region column, then extract unique pop_code
-metadata <- metadata[order(metadata$region), ]
-pop_order <- unique(metadata$pop_code)
-
-# define however many colours there are for K value
-pop_color <- c("lightblue2", "slateblue2", "black")
-
-oceania_p <- ggplot(data=oceania, aes(x=reorder(id, value, function(x){max(x)}), y=value, fill=reorder(K, sort(as.integer(K))))) +
-  geom_bar(stat="identity", width=1) +
-  scale_fill_manual(values = pop_color) +
-  scale_y_continuous(expand=c(0, 0)) +
-  scale_x_discrete(expand=c(-1, 0)) +
-  facet_grid(. ~ factor(pop, levels=pop_order), scales = "free", space="free", switch="both") +
-  theme_classic() +
-  theme(panel.spacing = unit(0.2, "lines"),
-        strip.background = element_rect(colour="white", fill="white"),
-        strip.text.x = element_text(size = 10, colour = "black", angle = 90, hjust = 0.8),
-        strip.placement = "outside",
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) +
-  theme(legend.position="bottom") +
-  ylab("") +
-  xlab("") +
-  labs(fill="K") +
-  guides(fill="none")
 
 
 # AFRICA (K=4)
@@ -844,44 +889,148 @@ africa <- l_df %>% gather(K, value, -id, -pop) # gather/transform df
 
 # order populations using metadata region and country
 metadata <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
-metadata <- merge(x = metadata, y = l_df, by.x = "study_ID", by.y = "id") # only retaining samples in l_df
+all_df <- rbind(mutate(africa, K = paste0("af", K), cont = "Africa"),
+                mutate(asia, K = paste0("as", K), cont = "Asia"),
+                mutate(oceania, K = paste0("oc", K), cont = "Oceania"))
+all_df <- left_join(all_df, select(metadata, pop_code, region), by = c("pop" = "pop_code"))
+all_df$cont <- factor(all_df$cont, levels = c("Asia", "Oceania", "Africa"))
+all_df$region <- factor(all_df$region, levels = c("East Asia", "Southeast Asia", "South Asia", "Oceania", "East Africa", "Southern Africa", "East Central Africa", "West Central Africa"))
+all_df$id <- factor(all_df$id, levels = unique(arrange(all_df, cont, region, pop)$id))
+all_df$K <- factor(all_df$K, levels = unique(arrange(all_df, cont, region)$K))
+pop_colors <- c("sienna4", "firebrick1", "orchid", "lightblue2", "slateblue2", "darkgreen", "lightseagreen", "green", "khaki4")
+names(pop_colors) <- levels(all_df$K)
 
-region_order <- c("East Africa", "Southern Africa", "East Central Africa", "West Central Africa")
-
-# convert the region column to a factor with the custom order — you wont see the results just yet
-metadata$region <- factor(metadata$region, levels = region_order, ordered = TRUE)
-
-# sort the entire metadata frame now based on the custom order of the region column, then extract unique pop_code
-metadata <- metadata[order(metadata$region), ]
-pop_order <- unique(metadata$pop_code)
-
-# define however many colours there are for K value
-pop_color <- c("darkgreen", "lightseagreen", "green", "khaki4")
-
-africa_init <- ggplot(data=africa, aes(x=reorder(id, value, function(x){max(x)}), y=value, fill=reorder(K, sort(as.integer(K))))) +
-  geom_bar(stat="identity", width=1) +
-  scale_fill_manual(values = pop_color) +
+africa <- ggplot(filter(all_df, cont == "Africa"), aes(x = reorder(id, value, function(x){max(x)}), y = value, fill = K)) +
+  geom_bar(stat="identity", width = 1, show.legend = F) +
+  scale_fill_manual(values = pop_colors) +
   scale_y_continuous(expand=c(0, 0)) +
-  scale_x_discrete(expand=c(0, 0)) +
-  facet_grid(. ~ factor(pop, levels=pop_order), scales = "free", space="free", switch="both") +
-  theme_classic() +
-  theme(panel.spacing = unit(0.2, "lines"),
-        strip.background = element_rect(colour="white", fill="white"),
-        strip.text.x = element_text(size = 10, colour = "black", angle = 90, hjust = 0.8),
-        strip.placement = "outside",
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()) +
-  theme(legend.position="bottom",
-        plot.margin = margin(t = 5, r = 5, b = 0, l = 5)) +
-  ylab("") +
-  xlab("") +
-  labs(fill="K") +
-  guides(fill="none")
+  scale_x_discrete(expand=c(-1, 0)) +
+  facet_wrap(~ pop, scales = "free_x", space = "free_x", strip.position = "bottom") +
+  theme_classic(base_size = 7) +
+  theme(panel.spacing = unit(0.1, "lines"),
+        strip.background = element_blank(),
+        strip.text.x = element_text(size = 5, angle = 90, hjust = 0.8),
+        strip.placement = "bottom",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_blank())
+  
+asia <- ggplot(filter(all_df, cont == "Asia"), aes(x = reorder(id, value, function(x){max(x)}), y = value, fill = K)) +
+  geom_bar(stat="identity", width = 1, show.legend = F) +
+  scale_fill_manual(values = pop_colors) +
+  scale_y_continuous(expand=c(0, 0)) +
+  scale_x_discrete(expand=c(-1, 0)) +
+  facet_wrap(~ pop, scales = "free_x", space = "free_x", strip.position = "bottom") +
+  theme_classic(base_size = 7) +
+  theme(panel.spacing = unit(0.1, "lines"),
+        strip.background = element_blank(),
+        strip.text.x = element_text(size = 5, angle = 90, hjust = 0.8),
+        strip.placement = "bottom",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_blank())
+  
+oceania <- ggplot(filter(all_df, cont == "Oceania"), aes(x = reorder(id, value, function(x){max(x)}), y = value, fill = K)) +
+  geom_bar(stat="identity", width = 1, show.legend = F) +
+  scale_fill_manual(values = pop_colors) +
+  scale_y_continuous(expand=c(0, 0)) +
+  scale_x_discrete(expand=c(-1, 0)) +
+  facet_wrap(~ pop, scales = "free_x", space = "free_x", strip.position = "bottom") +
+  theme_classic(base_size = 7) +
+  theme(panel.spacing = unit(0.1, "lines"),
+        strip.background = element_blank(),
+        strip.text.x = element_text(size = 5, angle = 90, hjust = 0.8),
+        strip.placement = "bottom",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_blank())
+
+p1d <- plot_grid(asia, oceania, africa, rel_widths = c(0.7, 0.5, 1), ncol = 3)
+p1d
+fwrite(all_df, "final/fig_1d_source.csv")
+saveRDS(p1d, "final/fig_1d.rds")
 
 
 save.image("regional_admixture_plots.RData")
+```
+
+**Step 7) Generate custom legend for plots and arrange all panels to create Figure 1.**
+
+`arrange_figures.R`
+
+```r
+# pop legend
+popinfo <- fread("freeze2_metadata_v3.txt")
+popinfo <- popinfo %>% 
+  select(population, pop_code, region, country, subsistence) %>%
+  filter(!(population %in% c("Rennell", "Bellona", "Vella Lavella", "Ambae", "Efate", "Tanna", "Ureparapara", "Pentecost", "Ambrym", "Malakula", "Espiritu Santo", "Maewo"))) %>%
+  unique()
+popinfo$continent <- case_when(
+  grepl("Africa", popinfo$region) ~ "Africa",
+  grepl("Asia", popinfo$region) ~ "Asia",
+  T ~ "Oceania"
+)
+popinfo <- popinfo %>% group_by(continent, subsistence) %>% mutate(y = row_number())
+popinfo$continent <- factor(popinfo$continent, levels = c("Asia", "Oceania", "Africa"))
+popinfo$subsistence <- factor(popinfo$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
+popinfo$population[c(23, 25, 29, 34)] <- c("Polynesian", "Khomani San", "Solomon Islanders", "ni-Vanuatu")
+popinfo$pop_lab <- paste0(popinfo$population, " (", popinfo$pop_code, ")")
+
+# Define colors and shapes
+colours_for_pop <- c("AET" = "firebrick1", "AGT" = "firebrick4", "ATI" = "brown1", "PHP" = "coral", "RAM" = "darkred",
+                     "KWI" = "orangered2", "MWA" = "deeppink", "MNO" = "indianred1", "MTW" = "indianred3", "SMB" = "maroon",
+                     "ADV" = "chocolate1", "SHL" = "sienna4", "ATY" = "magenta", "PAI" = "orchid",
+                     "PNG" = "slateblue2", "VAN" = "lightblue2", "POL" = "mediumblue", "SCI" = "skyblue4", "SLI" = "navy",
+                     "BCH" = "mediumturquoise", "CBU" = "darkgreen", "SHK" = "darkseagreen",
+                     "KIG" = "lemonchiffon3", "TWA" = "green",
+                     "HMB" = "olivedrab3", "NAM" = "mediumaquamarine", "SAN" = "lightseagreen",
+                     "BAK" = "turquoise4", "FAN" = "yellowgreen", "GAL" = "palegreen4",
+                     "KOT" = "palegreen", "NZE" = "olivedrab1", "TEK" = "mediumspringgreen", "TSO" = "khaki4")
+shapes_for_pop <- c("Hunter-gatherer" = 25, "Agriculturalist" = 21, "Pastoralist" = 22)
+
+# Plot points onto a grid with text labeling
+leg <- ggplot(popinfo, aes(x = subsistence, y = y, color = pop_code, fill = pop_code, shape = subsistence)) +
+  geom_point(size = 2, alpha = 0.7, show.legend = F) +
+  geom_text(aes(label = pop_lab), hjust = 0, nudge_x = 0.1, 
+            size = 5, size.unit = "pt", color = "black") +
+  scale_discrete_manual(c("color", "fill"), values = colours_for_pop) +
+  scale_shape_manual(values = shapes_for_subsistence) +
+  scale_y_reverse() +
+  scale_x_discrete(position = "top") +
+  facet_wrap(~ continent, scales = "free_x", space = "free_x") +
+  theme_classic(base_size = 7) +
+  theme(axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(hjust = 0, face = "bold"),
+        strip.text = element_blank(),
+        strip.background = element_blank(),
+        plot.margin = margin(0,40,0,0))
+leg <- leg  + theme(panel.background = element_blank())
+leg
+
+saveRDS(leg, "final/fig1_legend.rds")
+
+# Load in all panels
+p1a <- readRDS("final/fig_1a.rds")
+p1b <- readRDS("final/fig_1b.rds")
+p1c <- readRDS("final/fig_1c.rds")
+p1d <- readRDS("final/fig_1d.rds")
+leg <- readRDS("final/fig1_legend.rds")
+
+p1a <- p1a + theme(plot.margin = margin(0, 0, 0, 5))
+p1b <- p1b + theme(plot.margin = margin(10, 0, 10, 0))
+p1c <- p1c + theme(plot.margin = margin(0, 0, 0, 0))
+p1d <- p1d + theme(plot.margin = margin(0, 0, 0, 10))
+leg <- leg + theme(plot.margin = margin(0, 20, 0, 0))
+
+# Arrange Fig 1
+p1 <- plot_grid(
+  plot_grid(p1a, p1b, labels = c("a", "b"), ncol = 2, rel_widths = c(1, 0.75)),
+  p1c, p1d, leg, labels = c("", "c", "d", ""), nrow = 4, rel_heights = c(1, 0.7, 0.5, 0.7) 
+)
+save_plot("final/Fig1.pdf", p1, base_width = 7, base_height = 7)
 ```
 
 ## Historical effective population sizes
@@ -1061,7 +1210,7 @@ msmc2_Linux -t 6 -s -I 8,9,10,11,12,13,14,15 -o SMB.4ind.bootstrap${rep}.allchr.
 
 **Step 7) Plot MSMC2 results to create Figure 2a and Supplementary Figure 4.**
 
-`ne_for_manuscript.R`
+`ne_for_manuscript.R` → `fig_2a.rds`
 
 ```r
 library(ggplot2)
@@ -1131,6 +1280,9 @@ subsistence_colors <- c(
   "Pastoralist" = "#40E0D0")
 
 
+load("ne_for_manuscript.RData")
+alldfs$region <- factor(alldfs$region, levels = c("East Asia", "Southeast Asia", "South Asia", "Oceania", "East Africa", "Southern Africa", "East Central Africa", "West Central Africa"))
+
 p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence, group = pop)) +
   geom_step(size = 0.5, alpha = 0.7, key_glyph = draw_key_rect) +
   scale_x_log10(labels = scales::scientific, expand = c(0, 0), limits = c(5e3, 1e7)) +
@@ -1158,9 +1310,9 @@ p <- ggplot(alldfs, aes(x = left_time_boundary, y = lambda, color = subsistence,
     panel.spacing = unit(0.5, "cm")
   )
 
-fwrite(alldfs, "fig_2a_source.csv")
-saveRDS(p, "fig_2a.rds")
 
+fwrite(alldfs, "final/fig_2a_source.csv")
+saveRDS(p, "final/fig_2a.rds")
 
 #############################################
 ####     Plot only recent ~100k years    ####
@@ -1265,7 +1417,7 @@ plink --bfile freeze2_autosomes_biallelic_filtered_site_0.1_cohort_missing_nohet
 
 **Step 2) Use ROH outputs to create Figure 2b and Supplementary Figure 5.**
 
-`roh_figure.R` 
+`roh_figure.R` → `fig_2b.rds`
 
 ```r
 ###################
@@ -1279,6 +1431,7 @@ library(ggplot2)
 library(readr)
 library(cowplot)
 library(ggbeeswarm)
+library(ggsignif)
 
 setwd("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/roh")
 
@@ -1364,15 +1517,9 @@ plot2b_v2 <- ggplot(roh_merged_subset, aes(x = pop_code, y = ROH_MB, fill = subs
     panel.spacing = unit(0.5, "cm")
   )
 
-fwrite(roh_merged_subset, "fig_2b_source.csv")
-saveRDS(plot2b_v2, "fig_2b.rds")
-
-# Arrange Fig 2
-p2a <- readRDS("fig_2a.rds")
-p2b <- readRDS("fig_2b.rds")
-
-p2 <- plot_grid(p2a, p2b, labels = c("a", "b"), nrow = 2)
-save_plot("Fig2.pdf", p2, base_width = 7, base_height = 7)
+plot2b_v2
+fwrite(roh_merged_subset, "final/fig_2b_source.csv")
+saveRDS(plot2b_v2, "final/fig_2b.rds")
 
 
 # Compute p-value to measure significance in subsistence-based ROH difference
@@ -1492,4 +1639,16 @@ ggsave("Supp_Fig_ROH_total_length_only_all_pops.pdf", plot = plot_supp_roh, widt
 
 
 save.image("roh_figure.RData")
+```
+
+**Step 3) Arrange panels to create Figure 2.**
+
+`arrange_figures.R` 
+
+```r
+p2a <- readRDS("final/fig_2a.rds")
+p2b <- readRDS("final/fig_2b.rds")
+
+p2 <- plot_grid(p2a, p2b, labels = c("a", "b"), nrow = 2)
+save_plot("final/Fig2.pdf", p2, base_width = 7, base_height = 7)
 ```
