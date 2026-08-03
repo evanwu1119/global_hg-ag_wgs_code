@@ -12,57 +12,35 @@ This page details the code needed to generate PCA, ADMIXTURE, MSMC2, and ROH res
 ######################
 # Generating figure for dist. study pops worldwide
 
-library(ggmap)
-library(ggplot2)
-library(ggforce)
-library(dplyr)
-library(tidygeocoder)
+library("tidyverse")
+library("ggplot2")
+library("sf")
+library("rnaturalearth")
+library("rnaturalearthdata")
+theme_set(theme_bw())
 
-setwd("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/paper/figs")
-freeze2_metadata_v3 <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_metadata_v3.txt")
-freeze2_popinfo <- read.delim("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/metadata/freeze2_popinfo.txt")
+# 1. Base world map of relevant regions
 
+world <- ne_countries(scale = "medium", returnclass = "sf")
+class(world)
 
-#########################
-####    CLEAN DATA   ####
-#########################
-sample_counts <- aggregate(study_ID ~ pop_code, data = freeze2_metadata_v2, FUN = length)
-sample_counts <- merge(sample_counts, freeze2_popinfo, by = "pop_code")
+include_subregions <- c("Southern Africa","Southern Asia","Western Africa","Eastern Africa","Middle Africa","Northern Africa","Western Asia", 
+                        "South-Eastern Asia", "Central Asia", "Eastern Asia", "Melanesia", "Micronesia", "Polynesia")
+world_map <- world %>% 
+  filter(subregion %in% include_subregions) %>% 
+  ggplot() +
+  geom_sf(fill = "gray95", color = "gray20") +
+  coord_sf(crs = "+proj=laea +lat_0=45 +lon_0=90 +x_0=90000 +y_0=100000 +ellps=GRS80 +units=m +no_defs") +
+  theme(
+    axis.text = element_text(size = 6))
 
-# Plot proportion of individuals w/each subsistence by country
-summary_data <- sample_counts %>%
-  group_by(country, subsistence) %>%
-  summarise(count = sum(study_ID), .groups = "drop") %>%
-  group_by(country) %>%
-  mutate(total_by_country = sum(count), proportion = count / total_by_country)
+world_map
 
-# Geocode countries
-coordinates <- summary_data %>%
-  distinct(country) %>%
-  geocode(country, method = "osm")
-
-# Merge coordinates with summary data
-summary_data <- merge(summary_data, coordinates, by = "country", all.x = TRUE)
-summary_data <- summary_data %>%
-  mutate(end_angle = cumsum(proportion) * 2 * pi,  # Cumulative end angle
-         start_angle = lag(end_angle, default = 0))
-
-####################
-####    PLOT    ####
-####################
-world_map <- borders("world", colour = "gray50", fill = "gray80") # Base world map
-
-ggplot() +
-  world_map +
-  geom_arc_bar(data = summary_data,
-               aes(x0 = long, y0 = lat, r0 = 0, r = 2, start = start_angle, end = end_angle, fill = subsistence),
-               alpha = 0.7, color = "black") +
-  scale_fill_manual(values = c("Hunter-gatherer" = "blue", "Agriculturalist" = "green")) +
-  theme_void() +
-  labs(title = "Proportion of Hunter-Gatherers vs Agriculturalists by Country")
-
-
-save.image("world_pops.RData")
+ggsave(filename = "world_map.pdf",
+       plot = world_map,
+       width = 4,       
+       height = 3,      
+       units = "in")
 ```
 
 ## Global and continental PCA
