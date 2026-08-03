@@ -25,7 +25,7 @@ plink --vcf ${pop}.vcf.gz --cm-map project/lbarreiro/USERS/bridget/references/ma
 ihsbin --hap ${pop}.impute.hap --map ${pop}.map --out ${pop}_iHS --minmaf 0.05 --cutoff 0.1
 ```
 
-**Step 2) Generate iHS stats per-gene by averaging absolute iHS scores within 100kb windows centered on each gene.**
+**Step 2) Generate iHS stats per-gene by averaging absolute iHS scores within 100kb windows centered on each gene. We provide the Ensembl annotations used in Zenodo.**
 
 `new_iHS_per_gene_all_pops_BCpipeline.R` → `new_iHS_per_gene_all_pops_lowconf_anc_annot_BCpipeline_gff3_df.RData`
 
@@ -806,6 +806,7 @@ pop_region_mapping <- df_meta_full %>%
                                             "Oceania", "West Central Africa", "East Africa",
                                             "Southern Africa", "East Central Africa"))) %>% arrange(region)
 
+
 df_meta_full$pop <- factor(df_meta_full$pop, levels = pop_region_mapping$pop)
 df_meta_full$region <- factor(df_meta_full$region, levels = levels(pop_region_mapping$region))
 df_meta_full$Percentile <- factor(df_meta_full$Percentile, levels = c("50", "70", "90", "95", "99", "99.5"))
@@ -815,10 +816,17 @@ df_meta_full$Percentile <- factor(df_meta_full$Percentile, levels = c("50", "70"
 # And only high-level comps
 pops_to_plot <- c("AET", "PHP", "ADV", "SHL", "BCH", "CBU", "TWA", "KIG", "SAN", "NAM", "BAK", "FAN")
 comps_to_plot <- c("VIP", "metabolic", "endocrine")
-df_meta_subset <- df_meta_full %>% filter(pop %in% pops_to_plot) %>% filter(test_group %in% comps_to_plot) %>% filter(Percentile != 99.5)
 
+
+df_meta_subset <- df_meta_full %>% filter(pop %in% pops_to_plot) %>% filter(test_group %in% comps_to_plot) %>% filter(Percentile != 99.5)
 df_meta_subset$sig_subs <- paste(df_meta_subset$subsistence, df_meta_subset$significant)
 df_meta_subset$subsistence <- factor(df_meta_subset$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
+df_meta_subset$test_group <- factor(case_when(
+  df_meta_subset$test_group == "metabolic" ~ "Metabolic",
+  df_meta_subset$test_group == "endocrine" ~ "Endocrine",
+  T ~ "VIP"
+), levels = c("VIP", "Metabolic", "Endocrine"))
+df_meta_subset$Percentile <- factor(df_meta_subset$Percentile)
 
 plot_A <- ggplot(df_meta_subset, aes(x = Percentile, y = Enrichment_ratio,
            group = interaction(pop, test_group), linetype = test_group,
@@ -830,17 +838,20 @@ plot_A <- ggplot(df_meta_subset, aes(x = Percentile, y = Enrichment_ratio,
   scale_color_manual(values = c(
     "Hunter-gatherer" = "#C11C84",
     "Agriculturalist" = "#FDAE61",
-    "Pastoralist" = "#40E0D0")) +
+    "Pastoralist" = "#40E0D0"
+  )) +
   scale_shape_manual(values = c(6, 25, 1, 21, 0, 22)) +
-  scale_fill_manual(values = c("white", "#FDAE61", "white", "#C11C84", "white", "#40E0D0")) +
+  scale_fill_manual(values = c("Hunter-gatherer FALSE" = "white", "Hunter-gatherer TRUE" = "#C11C84", 
+                               "Agriculturalist FALSE" = "white", "Agriculturalist TRUE" =  "#FDAE61", 
+                               "Pastoralist FALSE" = "white",  "Pastoralist TRUE" = "#40E0D0"),
+                    breaks = c("Hunter-gatherer FALSE", "Hunter-gatherer TRUE"),
+                    labels = c("FALSE", "TRUE")) +
   scale_linetype_manual(values = c(
     "VIP" = "solid",
-    "metabolic" = "longdash",
-    "endocrine" = "dotted")) +
-  labs(x = "iHS percentile",
-       y = "Enrichment Ratio",
-       color = "Subsistence",
-       linetype = "Gene set") +
+    "Metabolic" = "longdash",
+    "Endocrine" = "dotted")) +
+  labs(x = "iHS percentile", y = "Enrichment Ratio",
+       fill = "Significant", color = "Subsistence", linetype = "Gene set") +
   theme_classic(base_size = 7) +
   theme(
     legend.position = "top",
@@ -848,11 +859,20 @@ plot_A <- ggplot(df_meta_subset, aes(x = Percentile, y = Enrichment_ratio,
     strip.text = element_text(face = "bold"),
     plot.margin = margin(t = 5, r = 20, b = 5, l = 16)
   ) +
-  guides(shape = "none", fill = "none", 
-         color = guide_legend(override.aes = list(color = c("#FDAE61", "#C11C84", "#40E0D0"), fill = c("#FDAE61", "#C11C84", "#40E0D0"), shape = c(25, 21, 22))))
+  guides(shape = "none", 
+         color = guide_legend(nrow = 2, override.aes = list(
+           color = c("#C11C84", "#FDAE61","#40E0D0"), 
+           fill = c("#C11C84", "#FDAE61", "#40E0D0"), 
+           shape = c(25, 21, 22))),
+         linetype = guide_legend(nrow = 2),
+         fill = guide_legend(nrow = 2, override.aes = list(
+           fill = c("white", "black"),
+           shape = c(21, 21)
+         )))
 
-fwrite(df_meta_subset, "fig_3a_source.csv")
-saveRDS(plot_A, "fig_3a.rds")
+plot_A
+fwrite(df_meta_subset, "final/fig_3a_source.csv")
+saveRDS(plot_A, "final/fig_3a.rds")
 
 
 #####---------------------------------------------
@@ -930,40 +950,50 @@ subplot$p_stars <- cut(subplot$chisq_pval,
 subplot <- subplot %>%
   mutate(SigFlag = chisq_pval < 0.05)
 
-metabolic_subplot$subsistence <- factor(metabolic_subplot$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
-metabolic_subplot$pop <- factor(metabolic_subplot$pop, 
-                                levels = arrange(metabolic_subplot, subsistence, pop)$pop %>% unique() %>% rev())
+subplot$subsistence <- factor(subplot$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
+subplot$test_group <- factor(case_when(
+  subplot$test_group == "Carbohydrate_metabolism" ~ "Carbohydrate metabolism",
+  subplot$test_group == "Lipid_metabolism" ~ "Lipid metabolism",
+  subplot$test_group == "estrogen_signaling_pathway" ~ "Estrogen signaling"
+), levels = c("Carbohydrate metabolism", "Lipid metabolism", "Estrogen signaling"))
+subplot$pop <- factor(subplot$pop, 
+                                levels = arrange(subplot, subsistence, pop)$pop %>% unique() %>% rev())
 
-plot_B <- ggplot(metabolic_subplot, aes(x = OR, y = pop, color = subsistence, fill = subsistence, shape = subsistence)) +
+plot_B <- ggplot(subplot, aes(x = OR, y = pop, color = subsistence, fill = subsistence, shape = subsistence)) +
   geom_errorbar(aes(xmin = CI_lower, xmax = CI_upper, alpha = SigFlag), width = 0.4, linewidth = 0.5) +
-  geom_point(aes(alpha = SigFlag), size = 2, show.legend = F) +
+  geom_point(aes(alpha = SigFlag), size = 2) +
   geom_text(aes(label = p_stars), nudge_y = 0.1, size = 3, color = "black") +
   geom_vline(xintercept = 1, linetype = "dashed", color = "black") +
-  facet_wrap(~ test_group, scales = "free_x", nrow = 1,
-             labeller = labeller(test_group = test_group_labels)) +
+  facet_wrap(~ test_group, scales = "free_x", nrow = 1) +
   scale_discrete_manual(c("color", "fill"), values = c(
     "Hunter-gatherer" = "#C11C84",
     "Agriculturalist" = "#FDAE61",
     "Pastoralist" = "#40E0D0"
   )) +
   scale_shape_manual(values = c(25, 21, 22)) +
-  scale_alpha_manual(values = c(0.3, 1), guide = "none") +
-  labs(x = "Odds ratio (enrichment of genes with extreme iHS scores)", y = NULL) +
+  scale_alpha_manual(values = c(0.3, 1)) +
+  labs(x = "Odds ratio (enrichment of genes with extreme iHS scores)", y = NULL, 
+       alpha = "Significant") +
+  guides(color = "none", fill = "none", shape = "none") +
   theme_classic(base_size = 7) +
   theme(
+    legend.position = "top",
     strip.background = element_blank(),
     strip.text = element_text(face = "bold"),
     plot.margin = margin(t = 5, r = 20, b = 5, l = 16),
-    legend.position = "none"
+    panel.spacing = unit(1, "lines")
   )
 
-fwrite(metabolic_subplot, "fig_3b_source.csv")
-saveRDS(plot_B, "fig_3b.rds")
+plot_B
+fwrite(subplot, "final/fig_3b_source.csv")
+saveRDS(plot_B, "final/fig_3b.rds")
 
-p3a <- readRDS("fig_3a.rds")
-p3b <- readRDS("fig_3b.rds")
-p3 <- plot_grid(p3a, p3b labels = c("a", "b"), nrow = 2, rel_heights = c(0.5, 1))
-save_plot("Fig3.pdf", p3, base_width = 7, base_height = 6)
+# Arrange
+p3a <- readRDS("final/fig_3a.rds")
+p3b <- readRDS("final/fig_3b.rds")
+
+p3 <- plot_grid(p3a, p3b, labels = c("a", "b"), nrow = 2, rel_heights = c(0.7, 1))
+save_plot("final/Fig3.pdf", p3, base_width = 7, base_height = 6)
 
 # Get ORs and CI ranges for paper
 
@@ -1350,7 +1380,7 @@ save(ihs_100kb_interval, file="new_iHS_per_window_100kb_df.RData")
 save(nsnps_100kb_interval, file="new_iHS_per_window_100kb_nsnps.df.RData")
 ```
 
-**Step 2) Use logistic regression to test the enrichment of immune, brain, and metabolic tissue (adipose-tissue, liver, and pancreas) cCREs separately for windowed iHS scores > 99% empirical percentile compared to background. Aggregate ORs across populations with at least 15 individuals using Fisher's combined method. cCRE annotations are included in `${tissue}_cCREs_GRCh37.tsv`.**
+**Step 2) Use logistic regression to test the enrichment of immune, brain, and metabolic tissue (adipose-tissue, liver, and pancreas) cCREs separately for windowed iHS scores > 99% empirical percentile compared to background. Aggregate ORs across populations with at least 15 individuals using Fisher's combined method. The documentation cCRE annotations is included in `0_annotation_curation`.**
 
 `enrich_cCREs_100kb.R ${tissue}` → `${tissue}_logistic_regression_ORs_CIs_pvals_all_pops_100kb.txt`, `${tissue}_iHS_100kb_with_cCRE_annot_all_pops.txt`, and `${tissue}_cCREs_100kb_fishers_meta.rds`
 
@@ -2573,11 +2603,14 @@ logistic_enrich_tissue$sig_lab <- case_when(
   T ~ "")
 logistic_enrich_tissue$pop_code <- factor(logistic_enrich_tissue$pop_code, levels = metadata$pop_code[order(metadata$subsistence)])
 logistic_enrich_tissue <- filter(logistic_enrich_tissue, element_type != "CA_H3K4me3" & n >= 15)
+logistic_enrich_tissue$tissue <- factor(str_to_title(logistic_enrich_tissue$tissue), levels = c("Brain", "Immune", "Adipose", "Pancreas", "Liver"))
+logistic_enrich_tissue$subsistence <- factor(logistic_enrich_tissue$subsistence, levels = c("Hunter-gatherer", "Agriculturalist", "Pastoralist"))
+logistic_enrich_tissue$pop_code <- factor(logistic_enrich_tissue$pop_code, levels = rev(metadata$pop_code[order(metadata$subsistence)]))
 
 p4a <- ggplot(logistic_enrich_tissue,
               aes(x = Odds_Ratio, y = pop_code,
                   color = tissue, alpha = significant, shape = subsistence)) +
-  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 2.5, ymax = 17.5),
+  geom_rect(aes(xmin = -Inf, xmax = Inf, ymin = 2.5, ymax = 18.5),
             fill = "grey91", color = "grey91") +
   geom_point(fill = "white", size = 1) +
   geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.4) +
@@ -2585,21 +2618,25 @@ p4a <- ggplot(logistic_enrich_tissue,
   scale_color_manual(values = colors[2:5]) +
   scale_alpha_manual(values = c(0.3, 1)) +
   scale_shape_manual(values = c(25, 21, 22)) +
-  labs(color = "", shape = "", x = "Odds ratio") +
+  labs(shape = "Subsistence", x = "Odds ratio (enrichment of cCREs found in extreme iHS regions)") +
   geom_vline(xintercept = 1, linetype = "dashed", color = "black") +
-  facet_nested(tissue ~ element_type) +
+  facet_nested_wrap(~ tissue + element_type, ncol = 3) +
   guides(alpha = "none", color = "none", fill = "none",
          shape = guide_legend(override.aes = list(fill = "black"))) +
   theme_classic(base_size = 7) +
   theme(legend.position = "top",
+        legend.box.spacing = unit(0, "lines"),
+        legend.margin = margin(0,0,0,0),
         axis.title.y = element_blank(),
         axis.text.y = element_text(size = 5),
         strip.background = element_blank(),
         strip.text.x = element_text(face = "bold"),
         strip.text.y = element_blank(),
-        panel.spacing = unit(1, "lines"))
-p4a
-saveRDS(p4a, "figures/fig_4a.rds")
+        panel.spacing.x = unit(1, "lines"),
+        plot.margin = margin(t = 1, r = 10, b = 1, l = 5))
+
+fwrite(logistic_enrich_tissue, "final/fig_4a_source.csv")
+saveRDS(p4a, "final/fig_4a.rds")
 
 # Figure 4b: Multiregression logistic regression plots
 load("data/fe_test.RData")
@@ -2640,27 +2677,35 @@ fwrite(fe_df, "data/all_tissues_fe.txt")
 
 # Plot for figure 4b
 fe_df <- fread("data/all_tissues_fe.txt")
-fe_df$tissue <- factor(fe_df$tissue, levels = c("brain", "immune", "adipose", "pancreas", "liver"))
 fe_df$sig_lab <- factor(case_when(fe_df$P_Value < 0.0005 ~ "***", fe_df$P_Value < 0.005 ~ "**", fe_df$P_Value < 0.05 ~ "*", T ~ ""))
 fe_df$ccre <- factor(fe_df$ccre)
+fe_df$tissue <- factor(str_to_title(fe_df$tissue), levels = c("Brain", "Immune", "Adipose", "Pancreas", "Liver"))
+fe_df$ccre <- factor(fe_df$ccre, levels = c("PLS", "pELS", "dELS"))
+fe_df$significant <- as.logical(fe_df$significant)
 
 p4b <- filter(fe_df, formula == "all") %>%
-  ggplot(aes(x = Odds_Ratio, y = ccre, color = tissue, group = tissue, alpha = as.factor(significant), label = sig_lab)) +
-  geom_point(size = 2, position = position_dodge(width = 0.6)) +
-  geom_errorbarh(aes(xmin = CI_Lower_OR, xmax = CI_Upper_OR), height = 0.4, position = position_dodge(width = 0.6)) +
-  geom_text(position = position_dodge(width = 0.6), vjust = -0.025, size = 3, color = "black") +
+  ggplot(aes(x = Odds_Ratio, y = tissue, color = tissue, alpha = as.factor(significant), label = sig_lab)) +
+  geom_point(size = 1, position = position_dodge(width = 0.6)) +
+  geom_errorbarh(aes(xmin = CI_Lower_OR, xmax = CI_Upper_OR), width = 0.1) +
+  geom_text(nudge_y = 0.1, size = 2, color = "black", show.legend = F) +
   geom_vline(xintercept = 1, linetype = "dashed", color = "black") +
   scale_colour_manual(values = colors) +
   scale_alpha_manual(values = c(0.3, 1)) +
-  labs(x = "Odds ratio", y = "", color = "") +
-  guides(alpha = "none") +
+  labs(x = "Odds ratio (enrichment of cCREs found in extreme iHS regions)", y = "", 
+       color = "Tissue", alpha = "Significant") +
+  scale_y_discrete(limits = rev) +
+  guides(color = guide_legend(nrow = 2)) +
+  facet_wrap(~ ccre) +
   theme_classic(base_size = 7) +
   theme(legend.position = "top",
+        legend.direction = "vertical",
         strip.background = element_blank(),
         strip.text = element_text(color = "black", face = "bold"),
-        panel.spacing = unit(0.5, "lines"))
-p4b
-saveRDS(p4b, "figures/fig_4b.rds")
+        panel.spacing = unit(1, "lines"),
+        plot.margin = margin(t = 5, r = 20, b = 5, l = 5))
+
+fwrite(fe_df, "final/fig_4b_source.csv")
+saveRDS(p4b, "final/fig_4b.rds")
 
 # Figure 4c: Celltype-specific immune cCRE enrichments plot
 load("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/new_iHS/functional_annotations/immune_cCREs_100kb_CTspecific_condensed_model.RData")
@@ -2680,56 +2725,58 @@ plot_df$cCRE_class <- factor(plot_df$cCRE_class, levels = c("PLS", "pELS", "dELS
 p4c <- plot_df %>%
   ggplot(aes(x = Odds_Ratio, y = cell_type, alpha = SigFlag, label = p_stars)) +
   geom_point(size = 1, color = "#2179B4") +
-  geom_errorbarh(aes(xmin = CI_Lower_OR, xmax = CI_Upper_OR), height = 0.2, color = "#2179B4") +
-  geom_text(nudge_y = 0.1, hjust = 0.5, size = 3, color = "black") +
+  geom_errorbarh(aes(xmin = CI_Lower_OR, xmax = CI_Upper_OR), width = 0.1, color = "#2179B4") +
+  geom_text(nudge_y = 0.1, hjust = 0.5, size = 2, color = "black") +
   geom_vline(xintercept = 1, linetype = "dashed", color = "black") +
   facet_wrap(~ cCRE_class, ncol = 3) +
-  labs(x = "Odds ratio", y = "Cell type") +
+  labs(x = "Odds ratio (enrichment of cCREs found in extreme iHS regions)", y = "Cell type") +
   scale_alpha_manual(values = c(0.3, 1), guide = "none") +
   theme_classic(base_size = 7) +
   theme(
     axis.title.y = element_blank(),
     strip.background = element_blank(),
     strip.text = element_text(face = "bold"),
-    #panel.spacing = unit(0.8, "lines"),
-    #panel.border = element_rect(color = "grey80", fill = NA, linewidth = 0.8)
+    panel.spacing = unit(1, "lines"),
+    plot.margin = margin(t = 5, r = 20, b = 5, l = 5),
   )
-p4c
-saveRDS(p4c, "figures/fig_4c.rds")
+
+fwrite(plot_df, "final/fig_4c_source.csv")
+saveRDS(p4c, "final/fig_4c.rds")
 
 # Figure 4d: eQTL enrichments plot
 load("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/new_iHS/eQTL_integration/Natri/Natri_subset_for_5D.RData")
 load("/project/lbarreiro/USERS/bridget/huntergatherer/freeze2/analysis/new_iHS/eQTL_integration/Harrison/Harrison_subset_for_5D.RData")
-fig_5d <- rbind(natri_subset, harrison_subset, fill = TRUE)
+fig_4d <- rbind(natri_subset, harrison_subset, fill = TRUE)
 
 # Recode "CTL" and NA to unstimulated
-fig_5d$condition <- ifelse(is.na(fig_5d$condition) | fig_5d$condition == "CTL",
-                           "unstimulated", fig_5d$condition)
-fig_5d$condition <- factor(fig_5d$condition, levels = c("unstimulated", "GARD", "LPS"))
+fig_4d$condition <- ifelse(is.na(fig_4d$condition) | fig_4d$condition == "CTL",
+                           "unstimulated", fig_4d$condition)
+fig_4d$condition <- factor(fig_4d$condition, levels = c("unstimulated", "GARD", "LPS"))
 
 # Drop 99.5 percentile to be consistent with other figures
-fig_5d <- fig_5d %>%
+fig_4d <- fig_4d %>%
   arrange(country, Population) %>%
   mutate(
     country = factor(country, levels = c("Indonesia", "Uganda")),
     Population = factor(Population, levels = c("KWI", "MTW", "SMB", "TWA", "KIG")),
     subsistence = factor(subsistence, levels = c("Hunter-gatherer", "Agriculturalist"))
   )
+fig_4d$condition <- factor(fig_4d$condition, levels = c("unstimulated", "GARD", "LPS"))
 
-p4d <- filter(fig_5d, Percentile != "99.5" & condition == "unstimulated") %>%
+p4d <- filter(fig_4d, Percentile != "99.5" & condition == "unstimulated") %>%
   ggplot(aes(x = Percentile, y = Enrichment_ratio,
              color = subsistence, fill = subsistence, shape = subsistence, group = Population)) +
   geom_hline(yintercept = 1, linetype = "dashed", color = "black") +
-  geom_line(show.legend = F) +
+  geom_line(linewidth = 0.5, show.legend = F) +
   geom_point(na.rm = TRUE, size = 2) +
   facet_ragged_rows(rows = vars(country), cols = vars(Population), axes = "all_x") +
   scale_discrete_manual(c("color", "fill"), values = c("#C21F84", "#FDAE61")) +
   scale_shape_manual(values = c(25, 21)) +
   scale_y_continuous(breaks = c(0, 0.5, 1, 1.5, 2),
-    limits = c(min(fig_5d$Enrichment_ratio, na.rm = TRUE),
-               max(fig_5d$Enrichment_ratio, na.rm = TRUE))) +
+    limits = c(min(fig_4d$Enrichment_ratio, na.rm = TRUE),
+               max(fig_4d$Enrichment_ratio, na.rm = TRUE))) +
   labs(x = "iHS percentile",
-    y = "Enrichment ratio",
+    y = "Fold-enrichment of cis-eQTLs across iHS thresholds",
     fill = "", color = "") +
   guides(shape = "none", fill = "none",
          color = guide_legend(override.aes = list(fill = c("#C21F84", "#FDAE61"), shape = c(25, 21)))) +
@@ -2737,22 +2784,22 @@ p4d <- filter(fig_5d, Percentile != "99.5" & condition == "unstimulated") %>%
   theme(strip.background = element_blank(),
         strip.text.x = element_text(face = "bold"),
         strip.text.y = element_text(angle = 0),
-        legend.position = "top")
+        legend.position = "top",
+        plot.margin = margin(t = 5, r = 5, b = 5, l = 5),)
 p4d
-saveRDS(p4d, "figures/fig_4d.rds")
+fwrite(fig_4d, "final/fig_4d_source.csv")
+saveRDS(p4d, "final/fig_4d.rds")
 
-# Arrange all plots
-p4a <- readRDS("figures/fig_4a.rds")
-p4b <- readRDS("figures/fig_4b.rds")
-p4c <- readRDS("figures/fig_4c.rds")
-p4d <- readRDS("figures/fig_4d.rds")
+# Arrange
+p4a <- readRDS("final/fig_4a.rds")
+p4b <- readRDS("final/fig_4b.rds")
+p4c <- readRDS("final/fig_4c.rds")
+p4d <- readRDS("final/fig_4d.rds")
 
 ccre_figures <- plot_grid(
-    plot_grid(p4a, labels = c("a"), label_size = 8),
+    plot_grid(p4a, labels = c("a")),
     plot_grid(p4b, p4c, p4d, labels = c("b", "c", "d"),
-              rel_widths = c(1, 0.8), nrow = 3, label_size = 8),
+              rel_heights = c(1, 0.8, 1), nrow = 3),
   rel_widths = c(1, 1), ncol = 2)
-
-ccre_figures
-save_plot("figures/ccre_figures.pdf", ccre_figures, base_width = 7, base_height = 9)
+save_plot("final/Fig4.pdf", ccre_figures, base_width = 7, base_height = 8)
 ```
